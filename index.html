@@ -1,0 +1,2031 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Flag Football Lineup Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+      details > summary .chevron {
+        transition: transform 150ms ease;
+      }
+
+      details[open] > summary .chevron {
+        transform: rotate(90deg);
+      }
+    </style>
+  </head>
+  <body class="min-h-screen bg-slate-50 text-slate-950">
+    <main class="mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 py-5 sm:px-6">
+      <header class="mb-5 flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p class="text-sm font-semibold uppercase tracking-wide text-emerald-700">Phase 2</p>
+          <h1 class="text-3xl font-bold">Flag Football Lineup Tool</h1>
+          <p class="mt-1 text-sm text-slate-600">Roster setup plus a first deterministic lineup planner. Saved on this browser.</p>
+        </div>
+        <div class="w-full space-y-2 sm:w-auto sm:min-w-80">
+          <div id="headerSignedOutControls" class="grid gap-2">
+            <input id="headerEmailInput" class="min-h-10 rounded-md border border-slate-300 px-3 text-sm" type="email" placeholder="coach@email.com" />
+            <input id="headerPasswordInput" class="min-h-10 rounded-md border border-slate-300 px-3 text-sm" type="password" placeholder="Password" />
+            <div class="grid grid-cols-2 gap-2">
+              <button id="headerSignInBtn" class="min-h-10 rounded-md bg-slate-900 px-3 py-2 text-sm font-semibold text-white active:bg-slate-700" type="button">
+                Sign In
+              </button>
+              <button id="headerSignUpBtn" class="min-h-10 rounded-md border border-emerald-300 bg-white px-3 py-2 text-sm font-semibold text-emerald-800 active:bg-emerald-50" type="button">
+                Create Login
+              </button>
+            </div>
+          </div>
+          <div id="headerSignedInControls" class="hidden rounded-md bg-white p-3 shadow-sm">
+            <p id="headerSignedInLabel" class="text-sm font-bold text-slate-800"></p>
+            <button id="headerSignOutBtn" class="mt-2 min-h-10 w-full rounded-md border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 active:bg-red-50" type="button">
+              Sign Out
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <section id="teamListView" class="space-y-4"></section>
+
+      <section id="dataTransferView" class="space-y-3 rounded-md border border-slate-200 bg-white p-4 shadow-sm">
+        <div>
+          <h2 class="text-2xl font-bold">Move Data Between Devices</h2>
+          <p class="text-sm text-slate-600">Export on the laptop, then paste/import on the phone.</p>
+        </div>
+        <div class="flex flex-col gap-2 sm:flex-row">
+          <button id="exportDataBtn" class="min-h-11 rounded-md bg-slate-900 px-4 py-2 font-semibold text-white active:bg-slate-700" type="button">
+            Export Data
+          </button>
+          <button id="importDataBtn" class="min-h-11 rounded-md border border-emerald-300 px-4 py-2 font-semibold text-emerald-800 active:bg-emerald-50" type="button">
+            Import Data
+          </button>
+        </div>
+        <textarea id="dataTransferText" class="hidden min-h-40 w-full rounded-md border border-slate-300 px-3 py-2 font-mono text-xs" placeholder="Exported data appears here. Paste data here to import."></textarea>
+        <p id="dataTransferStatus" class="text-sm font-semibold text-slate-700"></p>
+      </section>
+
+      <section id="cloudAccessView" class="space-y-3 rounded-md border border-slate-200 bg-white p-4 shadow-sm">
+        <div>
+          <h2 class="text-2xl font-bold">Cloud Coach Access</h2>
+          <p class="text-sm text-slate-600">Head coaches upload/share teams. Assistant coaches join with a code and can update game-day tracking.</p>
+        </div>
+        <div id="cloudSignedOutControls" class="grid gap-2 sm:grid-cols-[1fr_1fr_auto_auto]">
+          <input id="cloudEmailInput" class="min-h-11 rounded-md border border-slate-300 px-3 text-base" type="email" placeholder="coach@email.com" />
+          <input id="cloudPasswordInput" class="min-h-11 rounded-md border border-slate-300 px-3 text-base" type="password" placeholder="Password" />
+          <button id="cloudSignInBtn" class="min-h-11 rounded-md bg-slate-900 px-4 py-2 font-semibold text-white active:bg-slate-700" type="button">
+            Sign In
+          </button>
+          <button id="cloudSignUpBtn" class="min-h-11 rounded-md border border-emerald-300 px-4 py-2 font-semibold text-emerald-800 active:bg-emerald-50" type="button">
+            Create Login
+          </button>
+        </div>
+        <div id="cloudSignedInControls" class="hidden space-y-3">
+          <div class="flex flex-col gap-2 sm:flex-row">
+            <button id="cloudSyncLocalBtn" class="min-h-11 rounded-md bg-emerald-700 px-4 py-2 font-semibold text-white active:bg-emerald-800" type="button">
+              Upload Local Team as Head Coach
+            </button>
+            <button id="cloudRefreshBtn" class="min-h-11 rounded-md border border-slate-300 px-4 py-2 font-semibold active:bg-slate-100" type="button">
+              Refresh Cloud Teams
+            </button>
+            <button id="cloudSignOutBtn" class="min-h-11 rounded-md border border-red-200 px-4 py-2 font-semibold text-red-700 active:bg-red-50" type="button">
+              Sign Out
+            </button>
+          </div>
+          <div id="cloudUploadPicker" class="hidden rounded-md border border-emerald-200 bg-emerald-50 p-3">
+            <label class="block">
+              <span class="text-sm font-bold text-emerald-950">Which local team do you want to upload?</span>
+              <select id="cloudUploadTeamSelect" class="mt-2 min-h-11 w-full rounded-md border border-emerald-300 bg-white px-3 text-base"></select>
+            </label>
+            <div class="mt-3 flex flex-col gap-2 sm:flex-row">
+              <button id="confirmCloudUploadBtn" class="min-h-11 rounded-md bg-emerald-700 px-4 py-2 font-semibold text-white active:bg-emerald-800" type="button">
+                Upload Selected Team
+              </button>
+              <button id="cancelCloudUploadBtn" class="min-h-11 rounded-md border border-slate-300 bg-white px-4 py-2 font-semibold active:bg-slate-100" type="button">
+                Cancel
+              </button>
+            </div>
+          </div>
+          <div class="grid gap-2 sm:grid-cols-[1fr_auto]">
+            <input id="joinTeamCodeInput" class="min-h-11 rounded-md border border-slate-300 px-3 text-base" placeholder="Paste team invite code" />
+            <button id="joinTeamBtn" class="min-h-11 rounded-md border border-emerald-300 px-4 py-2 font-semibold text-emerald-800 active:bg-emerald-50" type="button">
+              Join as Assistant
+            </button>
+          </div>
+        </div>
+        <p id="cloudStatus" class="text-sm font-semibold text-slate-700">Cloud not signed in.</p>
+      </section>
+
+      <section id="teamEditorView" class="hidden space-y-5">
+        <div class="grid grid-cols-2 gap-2 rounded-md bg-slate-200 p-1">
+          <button id="gameDayTabBtn" class="min-h-12 rounded-md bg-slate-900 px-4 py-2 text-base font-bold text-white" type="button">
+            Game Day
+          </button>
+          <button id="setupTabBtn" class="min-h-12 rounded-md px-4 py-2 text-base font-bold text-slate-700" type="button">
+            Setup
+          </button>
+        </div>
+
+        <section id="gameDayPanel" class="space-y-5">
+        <section class="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
+          <div class="grid gap-3">
+            <label class="block">
+              <span class="text-sm font-bold uppercase tracking-wide text-slate-600">Current Team</span>
+              <select id="gameDayTeamSelect" class="mt-2 min-h-14 w-full rounded-md border border-slate-300 bg-white px-3 text-2xl font-bold text-slate-950"></select>
+            </label>
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div class="flex flex-wrap gap-2">
+                <p id="coachRoleBadge" class="rounded-md bg-slate-100 px-3 py-2 text-sm font-bold text-slate-800"></p>
+                <p id="teamStorageBadge" class="rounded-md bg-slate-100 px-3 py-2 text-sm font-bold text-slate-800"></p>
+              </div>
+              <button id="showInviteCardBtn" class="hidden min-h-11 rounded-md bg-emerald-700 px-4 py-2 font-semibold text-white active:bg-emerald-800" type="button">
+                Share Team
+              </button>
+            </div>
+            <div id="gameDayInviteCard" class="hidden rounded-md border border-emerald-200 bg-emerald-50 p-3">
+              <p class="text-sm font-bold text-emerald-950">Assistant coaches join with this code and get assistant access.</p>
+              <div class="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
+                <input id="gameDayInviteCodeInput" class="min-h-11 rounded-md border border-emerald-300 bg-white px-3 font-mono text-sm" readonly />
+                <button id="copyGameDayInviteCodeBtn" class="min-h-11 rounded-md bg-emerald-700 px-4 py-2 font-semibold text-white active:bg-emerald-800" type="button">
+                  Copy Code
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <details id="lineupPlannerSection" class="rounded-md border border-slate-200 bg-white p-4 shadow-sm" open>
+          <summary class="cursor-pointer list-none">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <h2 class="text-2xl font-bold">Lineup Planner</h2>
+                <p class="text-sm text-slate-600">Mark attendance, then build a live rotation board for whatever kind of game shows up.</p>
+              </div>
+              <span class="chevron text-2xl font-bold text-slate-600">&rsaquo;</span>
+            </div>
+          </summary>
+          <div class="mt-4 space-y-4">
+            <button id="generateLineupBtn" class="min-h-12 w-full rounded-md bg-emerald-700 px-5 py-3 text-base font-bold text-white active:bg-emerald-800 sm:w-auto">
+              Build Lineup
+            </button>
+
+            <div>
+              <h3 class="mb-2 text-sm font-bold uppercase tracking-wide text-slate-600">Attendance</h3>
+              <div id="attendanceOptions" class="grid gap-2 sm:grid-cols-2"></div>
+            </div>
+
+            <div id="lineupResults" class="space-y-4"></div>
+          </div>
+        </details>
+
+        <details id="sharedLineupSection" class="hidden rounded-md border border-slate-200 bg-white p-4 shadow-sm" open>
+          <summary class="cursor-pointer list-none">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <h2 class="text-2xl font-bold">Lineup</h2>
+                <p class="text-sm text-slate-600">Shared lineup from the head coach.</p>
+              </div>
+              <span class="chevron text-2xl font-bold text-slate-600">&rsaquo;</span>
+            </div>
+          </summary>
+          <div id="sharedLineupResults" class="mt-4 space-y-4"></div>
+        </details>
+
+        <details class="rounded-md border border-slate-200 bg-white p-4 shadow-sm" open>
+          <summary class="cursor-pointer list-none">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <h2 class="text-2xl font-bold">Defense Audit</h2>
+                <p class="text-sm text-slate-600">Checks whether defensive drives are balanced after you build a lineup.</p>
+              </div>
+              <span class="chevron text-2xl font-bold text-slate-600">&rsaquo;</span>
+            </div>
+          </summary>
+          <div id="defenseAuditContent" class="mt-4 rounded-md bg-slate-50 p-3 text-sm font-semibold text-slate-700">
+            Build a lineup to audit defensive balance.
+          </div>
+        </details>
+
+        <details class="rounded-md border border-slate-200 bg-white p-4 shadow-sm" open>
+          <summary class="cursor-pointer list-none">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <h2 class="text-2xl font-bold">Touch Tracker</h2>
+                <p class="text-sm text-slate-600">Tap a kid every time they touch the ball. Counts are cumulative for the game.</p>
+              </div>
+              <span class="chevron text-2xl font-bold text-slate-600">&rsaquo;</span>
+            </div>
+          </summary>
+          <div class="mt-4 space-y-4">
+            <div class="flex flex-col gap-2 sm:flex-row">
+              <button id="undoTouchBtn" class="min-h-11 rounded-md border border-slate-300 px-4 py-2 font-semibold active:bg-slate-100" type="button">
+                Undo Last Touch
+              </button>
+              <button id="resetTouchesBtn" class="min-h-11 rounded-md border border-red-200 px-4 py-2 font-semibold text-red-700 active:bg-red-50" type="button">
+                Reset Touches
+              </button>
+            </div>
+            <div id="touchTrackerStatus" class="rounded-md bg-slate-50 p-3 text-sm font-semibold text-slate-700"></div>
+            <div id="touchTrackerList" class="grid gap-2 sm:grid-cols-2"></div>
+          </div>
+        </details>
+        </section>
+
+        <section id="setupPanel" class="hidden space-y-5">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div class="flex flex-col gap-2 sm:flex-row">
+            <button id="backToTeamsBtn" class="min-h-11 rounded-md border border-slate-300 bg-white px-4 py-2 text-left font-semibold text-slate-800 active:bg-slate-100">
+              Back to Teams
+            </button>
+            <button id="newTeamBtn" class="min-h-11 rounded-md bg-emerald-700 px-4 py-2 font-semibold text-white active:bg-emerald-800">
+              New Team
+            </button>
+          </div>
+          <button id="deleteTeamBtn" class="min-h-11 rounded-md border border-red-200 bg-white px-4 py-2 font-semibold text-red-700 active:bg-red-50">
+            Delete Team
+          </button>
+        </div>
+
+        <section id="inviteCodePanel" class="hidden space-y-2 rounded-md border border-emerald-200 bg-emerald-50 p-4">
+          <h2 class="text-xl font-bold text-emerald-950">Coach Invite Code</h2>
+          <p class="text-sm text-emerald-900">Share this with an assistant coach after they sign in.</p>
+          <div class="grid gap-2 sm:grid-cols-[1fr_auto]">
+            <input id="inviteCodeInput" class="min-h-11 rounded-md border border-emerald-300 bg-white px-3 font-mono text-sm" readonly />
+            <button id="copyInviteCodeBtn" class="min-h-11 rounded-md bg-emerald-700 px-4 py-2 font-semibold text-white active:bg-emerald-800" type="button">
+              Copy
+            </button>
+          </div>
+        </section>
+
+        <form id="teamForm" class="space-y-4 rounded-md border border-slate-200 bg-white p-4 shadow-sm">
+          <div class="grid gap-4 sm:grid-cols-2">
+            <label class="block">
+              <span class="text-sm font-bold text-slate-700">Team name</span>
+              <input id="teamNameInput" class="mt-1 min-h-12 w-full rounded-md border border-slate-300 px-3 text-base" placeholder="Boys 6U Tigers" required />
+            </label>
+            <label class="block">
+              <span class="text-sm font-bold text-slate-700">Division</span>
+              <select id="divisionInput" class="mt-1 min-h-12 w-full rounded-md border border-slate-300 bg-white px-3 text-base" required></select>
+            </label>
+          </div>
+          <button class="min-h-12 w-full rounded-md bg-slate-900 px-5 py-3 text-base font-bold text-white active:bg-slate-700 sm:w-auto" type="submit">
+            Save Team
+          </button>
+        </form>
+
+        <details class="rounded-md border border-slate-200 bg-white p-4 shadow-sm" open>
+          <summary class="cursor-pointer list-none">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <h2 class="text-2xl font-bold">Roster</h2>
+                <p id="rosterCount" class="text-sm text-slate-600"></p>
+              </div>
+              <span class="chevron text-2xl font-bold text-slate-600">&rsaquo;</span>
+            </div>
+          </summary>
+          <div class="mt-4 space-y-4">
+            <button id="clearPlayerFormBtn" class="min-h-11 rounded-md border border-slate-300 px-4 py-2 font-semibold active:bg-slate-100">
+              Add New Kid
+            </button>
+
+            <form id="playerForm" class="space-y-4 border-b border-slate-200 pb-5">
+            <input id="playerIdInput" type="hidden" />
+            <div class="grid gap-4 sm:grid-cols-[1fr_8rem_9rem]">
+              <label class="block">
+                <span class="text-sm font-bold text-slate-700">Name</span>
+                <input id="playerNameInput" class="mt-1 min-h-12 w-full rounded-md border border-slate-300 px-3 text-base" placeholder="Kid name" required />
+              </label>
+              <label class="block">
+                <span class="text-sm font-bold text-slate-700">Jersey</span>
+                <input id="jerseyInput" class="mt-1 min-h-12 w-full rounded-md border border-slate-300 px-3 text-base" placeholder="Optional" />
+              </label>
+              <label class="block">
+                <span class="text-sm font-bold text-slate-700">Skill 1-5</span>
+                <input id="skillInput" class="mt-1 min-h-12 w-full rounded-md border border-slate-300 px-3 text-base" type="number" min="1" max="5" value="3" required />
+              </label>
+            </div>
+
+            <div class="grid gap-4 lg:grid-cols-2">
+              <fieldset class="rounded-md border border-slate-200 p-3">
+                <legend class="px-1 text-sm font-bold text-slate-700">Preferred offense positions</legend>
+                <div id="preferredOffenseOptions" class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3"></div>
+              </fieldset>
+              <fieldset class="rounded-md border border-slate-200 p-3">
+                <legend class="px-1 text-sm font-bold text-slate-700">Cannot-play offense positions</legend>
+                <div id="cannotOffenseOptions" class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3"></div>
+              </fieldset>
+              <fieldset class="rounded-md border border-slate-200 p-3">
+                <legend class="px-1 text-sm font-bold text-slate-700">Preferred defense positions</legend>
+                <div id="preferredDefenseOptions" class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3"></div>
+              </fieldset>
+              <fieldset class="rounded-md border border-slate-200 p-3">
+                <legend class="px-1 text-sm font-bold text-slate-700">Cannot-play defense positions</legend>
+                <div id="cannotDefenseOptions" class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3"></div>
+              </fieldset>
+            </div>
+
+            <label class="block">
+              <span class="text-sm font-bold text-slate-700">Notes</span>
+              <textarea id="notesInput" class="mt-1 min-h-24 w-full rounded-md border border-slate-300 px-3 py-2 text-base" placeholder="Needs confidence, lefty, nervous about catching..."></textarea>
+            </label>
+
+            <div class="flex flex-col gap-2 sm:flex-row">
+              <button class="min-h-12 rounded-md bg-emerald-700 px-5 py-3 text-base font-bold text-white active:bg-emerald-800" type="submit">
+                Save Kid
+              </button>
+              <button id="cancelEditPlayerBtn" class="hidden min-h-12 rounded-md border border-slate-300 px-5 py-3 text-base font-bold active:bg-slate-100" type="button">
+                Cancel Edit
+              </button>
+            </div>
+            </form>
+
+            <div id="playerList" class="grid gap-3"></div>
+          </div>
+        </details>
+        </section>
+      </section>
+    </main>
+
+    <script>
+      const STORAGE_KEY = "flagFootballLineupTool.v1";
+      const SUPABASE_URL = "https://uyquscyllwfykylbypzs.supabase.co";
+      const SUPABASE_KEY = "sb_publishable_mHS5AD4JIHTOWevqBB3LGg_XuT5IVq0";
+      const cloud = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY) || null;
+
+      const divisionConfigs = [
+        {
+          divisionId: "boys-6u",
+          divisionName: "Boys 6U",
+          playersOnField: 6,
+          minPlayersToPlay: 5,
+          mustEveryPlayerTouchBall: true,
+          minPlayingTimePercent: 0.5,
+          minOnLineOfScrimmage: 3,
+          maxInBackfield: 3,
+          halfLengthMinutes: 25,
+          numHalves: 2,
+          offensePositions: ["QB", "Center", "RB", "WR1", "WR2", "WR3"],
+          lockedOffensePositions: ["QB", "Center"],
+          defensePositions: ["C1", "LB1", "LB2", "C2", "MLB", "S2"],
+          positionDisplayNames: {
+            RB: "RB1"
+          },
+          positionColors: {
+            QB: { bg: "bg-purple-100", border: "border-purple-300", text: "text-purple-950", badge: "bg-purple-700", badgeText: "text-white" },
+            Center: { bg: "bg-blue-100", border: "border-blue-300", text: "text-blue-950", badge: "bg-blue-700", badgeText: "text-white" },
+            WR1: { bg: "bg-green-100", border: "border-green-300", text: "text-green-950", badge: "bg-green-700", badgeText: "text-white" },
+            WR2: { bg: "bg-orange-100", border: "border-orange-300", text: "text-orange-950", badge: "bg-orange-600", badgeText: "text-white" },
+            RB: { bg: "bg-slate-100", border: "border-slate-300", text: "text-slate-950", badge: "bg-slate-600", badgeText: "text-white" },
+            WR3: { bg: "bg-pink-100", border: "border-pink-300", text: "text-pink-950", badge: "bg-pink-600", badgeText: "text-white" },
+            C1: { bg: "bg-pink-100", border: "border-pink-300", text: "text-pink-950", badge: "bg-pink-600", badgeText: "text-white" },
+            LB1: { bg: "bg-green-100", border: "border-green-300", text: "text-green-950", badge: "bg-green-700", badgeText: "text-white" },
+            LB2: { bg: "bg-cyan-100", border: "border-cyan-300", text: "text-cyan-950", badge: "bg-cyan-600", badgeText: "text-white" },
+            C2: { bg: "bg-orange-100", border: "border-orange-300", text: "text-orange-950", badge: "bg-orange-600", badgeText: "text-white" },
+            MLB: { bg: "bg-purple-100", border: "border-purple-300", text: "text-purple-950", badge: "bg-purple-700", badgeText: "text-white" },
+            S2: { bg: "bg-slate-100", border: "border-slate-300", text: "text-slate-950", badge: "bg-slate-500", badgeText: "text-white" }
+          },
+          positionGroups: {
+            offense: {
+              lineOfScrimmage: ["Center", "WR1", "WR2", "WR3"],
+              backfield: ["QB", "RB"]
+            },
+            defense: {
+              corners: ["C1", "C2"],
+              linebackers: ["LB1", "LB2", "MLB"],
+              safety: ["S2"]
+            }
+          },
+          rotationStrategy: {
+            offense: "touch-triggered",
+            defense: "drive-based"
+          }
+        }
+      ];
+
+      const state = {
+        teams: [],
+        selectedTeamId: null,
+        activeTeamTab: "game",
+        user: null,
+        memberships: [],
+        cloudChannel: null
+      };
+
+      const els = {
+        teamListView: document.querySelector("#teamListView"),
+        headerSignedOutControls: document.querySelector("#headerSignedOutControls"),
+        headerSignedInControls: document.querySelector("#headerSignedInControls"),
+        headerEmailInput: document.querySelector("#headerEmailInput"),
+        headerPasswordInput: document.querySelector("#headerPasswordInput"),
+        headerSignInBtn: document.querySelector("#headerSignInBtn"),
+        headerSignUpBtn: document.querySelector("#headerSignUpBtn"),
+        headerSignedInLabel: document.querySelector("#headerSignedInLabel"),
+        headerSignOutBtn: document.querySelector("#headerSignOutBtn"),
+        dataTransferView: document.querySelector("#dataTransferView"),
+        exportDataBtn: document.querySelector("#exportDataBtn"),
+        importDataBtn: document.querySelector("#importDataBtn"),
+        dataTransferText: document.querySelector("#dataTransferText"),
+        dataTransferStatus: document.querySelector("#dataTransferStatus"),
+        cloudAccessView: document.querySelector("#cloudAccessView"),
+        cloudSignedOutControls: document.querySelector("#cloudSignedOutControls"),
+        cloudSignedInControls: document.querySelector("#cloudSignedInControls"),
+        cloudEmailInput: document.querySelector("#cloudEmailInput"),
+        cloudPasswordInput: document.querySelector("#cloudPasswordInput"),
+        cloudSignInBtn: document.querySelector("#cloudSignInBtn"),
+        cloudSignUpBtn: document.querySelector("#cloudSignUpBtn"),
+        cloudSyncLocalBtn: document.querySelector("#cloudSyncLocalBtn"),
+        cloudUploadPicker: document.querySelector("#cloudUploadPicker"),
+        cloudUploadTeamSelect: document.querySelector("#cloudUploadTeamSelect"),
+        confirmCloudUploadBtn: document.querySelector("#confirmCloudUploadBtn"),
+        cancelCloudUploadBtn: document.querySelector("#cancelCloudUploadBtn"),
+        cloudRefreshBtn: document.querySelector("#cloudRefreshBtn"),
+        cloudSignOutBtn: document.querySelector("#cloudSignOutBtn"),
+        joinTeamCodeInput: document.querySelector("#joinTeamCodeInput"),
+        joinTeamBtn: document.querySelector("#joinTeamBtn"),
+        cloudStatus: document.querySelector("#cloudStatus"),
+        inviteCodePanel: document.querySelector("#inviteCodePanel"),
+        inviteCodeInput: document.querySelector("#inviteCodeInput"),
+        copyInviteCodeBtn: document.querySelector("#copyInviteCodeBtn"),
+        teamEditorView: document.querySelector("#teamEditorView"),
+        gameDayTabBtn: document.querySelector("#gameDayTabBtn"),
+        setupTabBtn: document.querySelector("#setupTabBtn"),
+        gameDayPanel: document.querySelector("#gameDayPanel"),
+        setupPanel: document.querySelector("#setupPanel"),
+        gameDayTeamSelect: document.querySelector("#gameDayTeamSelect"),
+        coachRoleBadge: document.querySelector("#coachRoleBadge"),
+        showInviteCardBtn: document.querySelector("#showInviteCardBtn"),
+        gameDayInviteCard: document.querySelector("#gameDayInviteCard"),
+        gameDayInviteCodeInput: document.querySelector("#gameDayInviteCodeInput"),
+        copyGameDayInviteCodeBtn: document.querySelector("#copyGameDayInviteCodeBtn"),
+        teamStorageBadge: document.querySelector("#teamStorageBadge"),
+        newTeamBtn: document.querySelector("#newTeamBtn"),
+        backToTeamsBtn: document.querySelector("#backToTeamsBtn"),
+        deleteTeamBtn: document.querySelector("#deleteTeamBtn"),
+        teamForm: document.querySelector("#teamForm"),
+        teamNameInput: document.querySelector("#teamNameInput"),
+        divisionInput: document.querySelector("#divisionInput"),
+        attendanceOptions: document.querySelector("#attendanceOptions"),
+        lineupPlannerSection: document.querySelector("#lineupPlannerSection"),
+        sharedLineupSection: document.querySelector("#sharedLineupSection"),
+        generateLineupBtn: document.querySelector("#generateLineupBtn"),
+        lineupResults: document.querySelector("#lineupResults"),
+        sharedLineupResults: document.querySelector("#sharedLineupResults"),
+        undoTouchBtn: document.querySelector("#undoTouchBtn"),
+        resetTouchesBtn: document.querySelector("#resetTouchesBtn"),
+        touchTrackerStatus: document.querySelector("#touchTrackerStatus"),
+        touchTrackerList: document.querySelector("#touchTrackerList"),
+        defenseAuditContent: document.querySelector("#defenseAuditContent"),
+        rosterCount: document.querySelector("#rosterCount"),
+        playerForm: document.querySelector("#playerForm"),
+        playerIdInput: document.querySelector("#playerIdInput"),
+        playerNameInput: document.querySelector("#playerNameInput"),
+        jerseyInput: document.querySelector("#jerseyInput"),
+        skillInput: document.querySelector("#skillInput"),
+        notesInput: document.querySelector("#notesInput"),
+        preferredOffenseOptions: document.querySelector("#preferredOffenseOptions"),
+        cannotOffenseOptions: document.querySelector("#cannotOffenseOptions"),
+        preferredDefenseOptions: document.querySelector("#preferredDefenseOptions"),
+        cannotDefenseOptions: document.querySelector("#cannotDefenseOptions"),
+        clearPlayerFormBtn: document.querySelector("#clearPlayerFormBtn"),
+        cancelEditPlayerBtn: document.querySelector("#cancelEditPlayerBtn"),
+        playerList: document.querySelector("#playerList")
+      };
+
+      function makeId(prefix) {
+        return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+
+      function loadState() {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (!saved) return;
+
+        try {
+          const parsed = JSON.parse(saved);
+          state.teams = Array.isArray(parsed.teams) ? parsed.teams : [];
+          state.selectedTeamId = parsed.selectedTeamId || null;
+        } catch (error) {
+          console.warn("Could not load saved lineup data", error);
+        }
+      }
+
+      function saveState() {
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({
+            teams: state.teams,
+            selectedTeamId: state.selectedTeamId
+          })
+        );
+      }
+
+      function renderCloudStatus() {
+        if (!cloud) {
+          els.cloudStatus.textContent = "Supabase library did not load.";
+          return;
+        }
+
+        const signedIn = Boolean(state.user);
+        els.headerSignedOutControls.classList.toggle("hidden", signedIn);
+        els.headerSignedInControls.classList.toggle("hidden", !signedIn);
+        els.cloudSignedOutControls.classList.toggle("hidden", signedIn);
+        els.cloudSignedInControls.classList.toggle("hidden", !signedIn);
+        els.headerSignedInLabel.textContent = signedIn ? `Signed in as ${state.user.email}` : "";
+        els.cloudStatus.textContent = signedIn
+          ? `Signed in as ${state.user.email}. User id: ${state.user.id}. Cloud teams loaded: ${state.memberships.length}.`
+          : "Cloud not signed in.";
+      }
+
+      async function initCloud() {
+        if (!cloud) {
+          renderCloudStatus();
+          return;
+        }
+
+        const { data } = await cloud.auth.getSession();
+        state.user = data.session?.user || null;
+        renderCloudStatus();
+        if (state.user) {
+          await loadCloudTeams();
+        }
+
+        cloud.auth.onAuthStateChange(async (_event, session) => {
+          state.user = session?.user || null;
+          renderCloudStatus();
+          if (state.user) {
+            await loadCloudTeams();
+          }
+        });
+      }
+
+      function getCloudCredentials() {
+        const email = (els.cloudEmailInput.value || els.headerEmailInput.value).trim();
+        const password = els.cloudPasswordInput.value || els.headerPasswordInput.value;
+        if (!email || !password) {
+          els.cloudStatus.textContent = "Enter email and password first.";
+          return null;
+        }
+        els.cloudEmailInput.value = email;
+        els.headerEmailInput.value = email;
+        els.cloudPasswordInput.value = password;
+        els.headerPasswordInput.value = password;
+        return { email, password };
+      }
+
+      async function requireCloudSession() {
+        if (!cloud) return null;
+
+        const { data, error } = await cloud.auth.getSession();
+        if (error) {
+          els.cloudStatus.textContent = error.message;
+          return null;
+        }
+
+        state.user = data.session?.user || null;
+        renderCloudStatus();
+
+        if (!state.user) {
+          els.cloudStatus.textContent = "Supabase says you are not signed in. Sign out, then sign in again.";
+          return null;
+        }
+
+        return data.session;
+      }
+
+      async function signInToCloud() {
+        const credentials = getCloudCredentials();
+        if (!credentials) return;
+
+        const { error } = await cloud.auth.signInWithPassword(credentials);
+        els.cloudStatus.textContent = error ? error.message : "Signed in.";
+      }
+
+      async function signUpToCloud() {
+        const credentials = getCloudCredentials();
+        if (!credentials) return;
+
+        const { error } = await cloud.auth.signUp(credentials);
+        els.cloudStatus.textContent = error ? error.message : "Login created. You can sign in now.";
+      }
+
+      async function signOutOfCloud() {
+        await cloud.auth.signOut();
+        state.user = null;
+        state.memberships = [];
+        renderCloudStatus();
+      }
+
+      async function loadCloudTeams() {
+        if (!state.user) return;
+
+        const { data: memberships, error: membershipError } = await cloud
+          .from("team_members")
+          .select("team_id, role")
+          .eq("user_id", state.user.id);
+
+        if (membershipError) {
+          els.cloudStatus.textContent = membershipError.message;
+          return;
+        }
+
+        state.memberships = memberships || [];
+        const teamIds = state.memberships.map((membership) => membership.team_id);
+        if (teamIds.length === 0) {
+          const localOnlyTeams = state.teams.filter((team) => !team.cloudId);
+          state.teams = localOnlyTeams;
+          saveState();
+          renderCloudStatus();
+          render();
+          return;
+        }
+
+        const { data: cloudTeams, error: teamError } = await cloud.from("teams").select("*").in("id", teamIds);
+        if (teamError) {
+          els.cloudStatus.textContent = teamError.message;
+          return;
+        }
+
+        const localOnlyTeams = state.teams.filter((team) => !team.cloudId);
+        state.teams = [...localOnlyTeams, ...(cloudTeams || []).map(cloudRowToTeam)];
+        saveState();
+        renderCloudStatus();
+        render();
+        subscribeToSelectedCloudTeam();
+      }
+
+      async function uploadSelectedTeamToCloud() {
+        showCloudUploadPicker();
+      }
+
+      function showCloudUploadPicker() {
+        const localTeams = state.teams.filter((team) => !team.cloudId);
+        if (!state.user) {
+          els.cloudStatus.textContent = "Sign in first.";
+          return;
+        }
+        if (localTeams.length === 0) {
+          els.cloudStatus.textContent = "No local-only teams found to upload.";
+          return;
+        }
+
+        els.cloudUploadTeamSelect.innerHTML = localTeams
+          .map((team) => `<option value="${team.id}">${escapeHtml(team.name || "Untitled Team")}</option>`)
+          .join("");
+        els.cloudUploadPicker.classList.remove("hidden");
+        els.cloudStatus.textContent = "Choose the local team to upload.";
+      }
+
+      async function uploadLocalTeamToCloud(teamId) {
+        const session = await requireCloudSession();
+        if (!session) return;
+
+        const team = state.teams.find((item) => item.id === teamId && !item.cloudId);
+        if (!team) {
+          els.cloudStatus.textContent = "Choose a local team first.";
+          return;
+        }
+
+        const payload = teamToCloudPayload(team);
+        const response = await cloud.rpc("create_team_as_head", {
+          p_name: payload.name,
+          p_division_id: payload.division_id,
+          p_roster: payload.roster,
+          p_touch_tracker: payload.touch_tracker,
+          p_attendance: payload.attendance,
+          p_lineup_plan: payload.lineup_plan
+        });
+
+        if (response.error) {
+          els.cloudStatus.textContent = response.error.message;
+          return;
+        }
+
+        const { data: insertedTeam, error: fetchError } = await cloud
+          .from("teams")
+          .select("*")
+          .eq("id", response.data)
+          .single();
+
+        if (fetchError) {
+          els.cloudStatus.textContent = fetchError.message;
+          return;
+        }
+
+        const cloudTeam = cloudRowToTeam(insertedTeam);
+        state.teams = state.teams.filter((item) => item.id !== team.id && item.cloudId !== cloudTeam.cloudId);
+        state.teams.unshift(cloudTeam);
+        state.selectedTeamId = cloudTeam.id;
+        state.activeTeamTab = "game";
+        els.cloudUploadPicker.classList.add("hidden");
+        await loadCloudTeams();
+        els.cloudStatus.textContent = `Uploaded. Invite code: ${cloudTeam.cloudId}`;
+      }
+
+      async function joinCloudTeam() {
+        const teamId = els.joinTeamCodeInput.value.trim();
+        if (!teamId || !state.user) return;
+
+        const { error } = await cloud.from("team_members").insert({
+          team_id: teamId,
+          user_id: state.user.id,
+          role: "assistant"
+        });
+
+        if (error) {
+          els.cloudStatus.textContent = error.message;
+          return;
+        }
+
+        els.joinTeamCodeInput.value = "";
+        await loadCloudTeams();
+        els.cloudStatus.textContent = "Joined team as assistant coach.";
+      }
+
+      async function saveSelectedCloudTeam() {
+        const team = getSelectedTeam();
+        if (!team?.cloudId || !state.user) return;
+
+        const { error } = await cloud.from("teams").update(teamToCloudPayload(team)).eq("id", team.cloudId);
+        if (error) {
+          els.cloudStatus.textContent = error.message;
+        }
+      }
+
+      function subscribeToSelectedCloudTeam() {
+        if (!cloud) return;
+        if (state.cloudChannel) {
+          cloud.removeChannel(state.cloudChannel);
+          state.cloudChannel = null;
+        }
+
+        const team = getSelectedTeam();
+        if (!team?.cloudId) return;
+
+        state.cloudChannel = cloud
+          .channel(`team-${team.cloudId}`)
+          .on(
+            "postgres_changes",
+            { event: "UPDATE", schema: "public", table: "teams", filter: `id=eq.${team.cloudId}` },
+            (payload) => {
+              const updatedTeam = cloudRowToTeam(payload.new);
+              const wasSelected = state.selectedTeamId === team.id;
+              state.teams = state.teams.map((item) => (item.cloudId === updatedTeam.cloudId ? updatedTeam : item));
+              if (wasSelected) state.selectedTeamId = updatedTeam.id;
+              saveState();
+              render();
+            }
+          )
+          .subscribe();
+      }
+
+      function getExportPayload() {
+        return {
+          app: "flag-football-lineup-tool",
+          version: 1,
+          exportedAt: new Date().toISOString(),
+          teams: state.teams
+        };
+      }
+
+      function importPayload(rawValue) {
+        const parsed = JSON.parse(rawValue);
+        if (parsed?.app !== "flag-football-lineup-tool" || !Array.isArray(parsed.teams)) {
+          throw new Error("That does not look like lineup tool export data.");
+        }
+
+        state.teams = parsed.teams;
+        state.selectedTeamId = null;
+        for (const team of state.teams) {
+          team.manualStartingLineup = team.manualStartingLineup || emptyManualLineup();
+          ensureTouchTracker(team);
+        }
+        saveState();
+      }
+
+      function getDivision(divisionId) {
+        return divisionConfigs.find((division) => division.divisionId === divisionId) || divisionConfigs[0];
+      }
+
+      function getSelectedTeam() {
+        return state.teams.find((team) => team.id === state.selectedTeamId) || null;
+      }
+
+      function getSelectedMembership() {
+        const team = getSelectedTeam();
+        if (!team?.cloudId) return null;
+        return state.memberships.find((membership) => membership.team_id === team.cloudId) || null;
+      }
+
+      function isHeadCoach(team = getSelectedTeam()) {
+        if (!team?.cloudId) return true;
+        const membership = state.memberships.find((item) => item.team_id === team.cloudId);
+        return membership?.role === "head";
+      }
+
+      function roleLabel(team = getSelectedTeam()) {
+        if (!team?.cloudId) return "Local only";
+        const membership = state.memberships.find((item) => item.team_id === team.cloudId);
+        return membership?.role === "head" ? "Head coach" : "Assistant coach";
+      }
+
+      function teamStorageLabel(team) {
+        return team.cloudId ? "Cloud" : "Local";
+      }
+
+      function teamStorageBadgeHtml(team) {
+        const isCloud = Boolean(team.cloudId);
+        const classes = isCloud ? "bg-sky-100 text-sky-900 border-sky-200" : "bg-slate-100 text-slate-800 border-slate-200";
+        const label = isCloud ? "Cloud" : "Local";
+        return `<span class="inline-flex rounded-md border ${classes} px-2 py-1 text-xs font-bold uppercase tracking-wide">${label}</span>`;
+      }
+
+      function orderedLineupEntries(lineup, side) {
+        if (side === "offense") {
+          const order = ["QB", "WR1", "WR2", "Center", "RB", "WR3"];
+          return order.filter((position) => lineup[position]).map((position) => [position, lineup[position]]);
+        }
+        return Object.entries(lineup);
+      }
+
+      function teamToCloudPayload(team) {
+        return {
+          name: team.name || "Untitled Team",
+          division_id: team.divisionId,
+          roster: team.roster || [],
+          touch_tracker: team.touchTracker || emptyTouchTracker(),
+          attendance: getAttendingPlayerIds(),
+          lineup_plan: team.lastLineupPlan || null
+        };
+      }
+
+      function cloudRowToTeam(row) {
+        return {
+          id: `cloud-${row.id}`,
+          cloudId: row.id,
+          name: row.name,
+          divisionId: row.division_id,
+          roster: row.roster || [],
+          manualStartingLineup: emptyManualLineup(),
+          touchTracker: row.touch_tracker || emptyTouchTracker(),
+          lastLineupPlan: row.lineup_plan || null
+        };
+      }
+
+      function setActiveTeamTab(tab) {
+        state.activeTeamTab = tab;
+        const isGame = tab === "game";
+        els.gameDayPanel.classList.toggle("hidden", !isGame);
+        els.setupPanel.classList.toggle("hidden", isGame);
+        els.gameDayTabBtn.className = isGame
+          ? "min-h-12 rounded-md bg-slate-900 px-4 py-2 text-base font-bold text-white"
+          : "min-h-12 rounded-md px-4 py-2 text-base font-bold text-slate-700";
+        els.setupTabBtn.className = isGame
+          ? "min-h-12 rounded-md px-4 py-2 text-base font-bold text-slate-700"
+          : "min-h-12 rounded-md bg-slate-900 px-4 py-2 text-base font-bold text-white";
+      }
+
+      function comparePlayers(a, b) {
+        return a.name.localeCompare(b.name) || a.id.localeCompare(b.id);
+      }
+
+      function playerLabel(player) {
+        return `${player.jersey ? `#${player.jersey} ` : ""}${player.name}`;
+      }
+
+      function positionLabel(position, division) {
+        return division.positionDisplayNames?.[position] || position;
+      }
+
+      function positionColorClasses(position, division) {
+        return (
+          division.positionColors?.[position] || {
+            bg: "bg-slate-50",
+            border: "border-slate-200",
+            text: "text-slate-950",
+            badge: "bg-slate-700",
+            badgeText: "text-white"
+          }
+        );
+      }
+
+      function emptyManualLineup() {
+        return {
+          offense: {},
+          defense: {}
+        };
+      }
+
+      function emptyTouchTracker() {
+        return {
+          counts: {},
+          history: []
+        };
+      }
+
+      function ensureTouchTracker(team) {
+        team.touchTracker = team.touchTracker || emptyTouchTracker();
+        team.touchTracker.counts = team.touchTracker.counts || {};
+        team.touchTracker.history = Array.isArray(team.touchTracker.history) ? team.touchTracker.history : [];
+
+        for (const player of team.roster) {
+          if (!Number.isInteger(team.touchTracker.counts[player.id])) {
+            team.touchTracker.counts[player.id] = 0;
+          }
+        }
+
+        const rosterIds = new Set(team.roster.map((player) => player.id));
+        for (const playerId of Object.keys(team.touchTracker.counts)) {
+          if (!rosterIds.has(playerId)) {
+            delete team.touchTracker.counts[playerId];
+          }
+        }
+        team.touchTracker.history = team.touchTracker.history.filter((entry) => rosterIds.has(entry.playerId));
+      }
+
+      function createTeam() {
+        const division = divisionConfigs[0];
+        const team = {
+          id: makeId("team"),
+          name: "",
+          divisionId: division.divisionId,
+          roster: [],
+          manualStartingLineup: emptyManualLineup(),
+          touchTracker: emptyTouchTracker()
+        };
+
+        state.teams.unshift(team);
+        state.selectedTeamId = team.id;
+        state.activeTeamTab = "setup";
+        saveState();
+        render();
+        els.teamNameInput.focus();
+      }
+
+      function renderDivisionOptions() {
+        els.divisionInput.innerHTML = divisionConfigs
+          .map((division) => `<option value="${division.divisionId}">${division.divisionName}</option>`)
+          .join("");
+      }
+
+      function checkboxHtml(name, value, checkedValues) {
+        const checked = checkedValues.includes(value) ? "checked" : "";
+        return `
+          <label class="flex min-h-11 items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold">
+            <input class="h-5 w-5 accent-emerald-700" type="checkbox" name="${name}" value="${value}" ${checked} />
+            <span>${value}</span>
+          </label>
+        `;
+      }
+
+      function renderPositionOptions(player = null) {
+        const team = getSelectedTeam();
+        const selectedDivisionId = els.divisionInput.value || team?.divisionId;
+        const division = getDivision(selectedDivisionId);
+        const preferred = player?.preferredPositions || { offense: [], defense: [] };
+        const cannot = player?.cannotPlayPositions || { offense: [], defense: [] };
+
+        els.preferredOffenseOptions.innerHTML = division.offensePositions
+          .map((position) => checkboxHtml("preferredOffense", position, preferred.offense || []))
+          .join("");
+        els.cannotOffenseOptions.innerHTML = division.offensePositions
+          .map((position) => checkboxHtml("cannotOffense", position, cannot.offense || []))
+          .join("");
+        els.preferredDefenseOptions.innerHTML = division.defensePositions
+          .map((position) => checkboxHtml("preferredDefense", position, preferred.defense || []))
+          .join("");
+        els.cannotDefenseOptions.innerHTML = division.defensePositions
+          .map((position) => checkboxHtml("cannotDefense", position, cannot.defense || []))
+          .join("");
+      }
+
+      function getCheckedValues(name) {
+        return [...document.querySelectorAll(`input[name="${name}"]:checked`)].map((input) => input.value);
+      }
+
+      function getAttendingPlayerIds() {
+        return [...document.querySelectorAll('input[name="attendance"]:checked')].map((input) => input.value);
+      }
+
+      function normalizePlayer(player) {
+        return {
+          ...player,
+          preferredPositions: {
+            offense: player.preferredPositions?.offense || [],
+            defense: player.preferredPositions?.defense || []
+          },
+          cannotPlayPositions: {
+            offense: player.cannotPlayPositions?.offense || [],
+            defense: player.cannotPlayPositions?.defense || []
+          }
+        };
+      }
+
+      function makeStats(players) {
+        return Object.fromEntries(
+          players.map((player) => [
+            player.id,
+            {
+              totalUnits: 0,
+              offense: 0,
+              defense: 0,
+              touches: 0,
+              positions: {},
+              lastUnit: -99
+            }
+          ])
+        );
+      }
+
+      function isEligible(player, side, position) {
+        return !player.cannotPlayPositions?.[side]?.includes(position);
+      }
+
+      function positionFit(player, side, position) {
+        return player.preferredPositions?.[side]?.includes(position) ? 18 : 0;
+      }
+
+      function needScore(stats, playerId, unitIndex, minTarget) {
+        const current = stats[playerId].totalUnits;
+        const expectedByNow = Math.ceil((unitIndex + 1) * 0.5);
+        return Math.max(0, expectedByNow - current) * 45 + Math.max(0, minTarget - current) * 6;
+      }
+
+      function chooseLineup({
+        side,
+        positions,
+        players,
+        stats,
+        unitIndex,
+        minTarget,
+        forcedPlayerId = null,
+        lockedPositions = [],
+        lockedRolePlayerCounts = {}
+      }) {
+        let best = null;
+        const orderedPositions = [...positions].sort((a, b) => {
+          if (forcedPlayerId) {
+            const forcedCanPlayA = players.some((player) => player.id === forcedPlayerId && isEligible(player, side, a));
+            const forcedCanPlayB = players.some((player) => player.id === forcedPlayerId && isEligible(player, side, b));
+            if (forcedCanPlayA !== forcedCanPlayB) return forcedCanPlayA ? -1 : 1;
+          }
+          return a.localeCompare(b);
+        });
+
+        function candidateScore(player, position) {
+          const recentPenalty = Math.max(0, 4 - (unitIndex - stats[player.id].lastUnit)) * 7;
+          const sideBalance = side === "offense" ? stats[player.id].offense : stats[player.id].defense;
+          const forcedBonus = player.id === forcedPlayerId ? 160 : 0;
+          const lockedRoleRepeatPenalty =
+            lockedPositions.includes(position) && lockedRolePlayerCounts[player.id]
+              ? lockedRolePlayerCounts[player.id] * 220
+              : 0;
+          return (
+            forcedBonus +
+            needScore(stats, player.id, unitIndex, minTarget) +
+            positionFit(player, side, position) -
+            stats[player.id].totalUnits * 8 -
+            sideBalance * 3 -
+            recentPenalty +
+            -lockedRoleRepeatPenalty +
+            Number(player.skill || 3) * 0.2
+          );
+        }
+
+        function walk(index, usedIds, lineup, score) {
+          if (index === orderedPositions.length) {
+            if (forcedPlayerId && !Object.values(lineup).includes(forcedPlayerId)) return;
+            if (!best || score > best.score) best = { lineup: { ...lineup }, score };
+            return;
+          }
+
+          const position = orderedPositions[index];
+          const candidates = players
+            .filter((player) => !usedIds.has(player.id) && isEligible(player, side, position))
+            .sort((a, b) => candidateScore(b, position) - candidateScore(a, position) || comparePlayers(a, b))
+            .slice(0, 8);
+
+          for (const player of candidates) {
+            usedIds.add(player.id);
+            lineup[position] = player.id;
+            walk(index + 1, usedIds, lineup, score + candidateScore(player, position));
+            delete lineup[position];
+            usedIds.delete(player.id);
+          }
+        }
+
+        walk(0, new Set(), {}, 0);
+        if (!best) return null;
+
+        const lineup = {};
+        for (const position of positions) {
+          lineup[position] = best.lineup[position];
+        }
+        return lineup;
+      }
+
+      function applyLineupStats(lineup, side, stats, unitIndex, toucherId = null) {
+        for (const [position, playerId] of Object.entries(lineup)) {
+          const playerStats = stats[playerId];
+          playerStats.totalUnits += 1;
+          playerStats[side] += 1;
+          playerStats.lastUnit = unitIndex;
+          playerStats.positions[position] = (playerStats.positions[position] || 0) + 1;
+        }
+        if (toucherId && stats[toucherId]) {
+          stats[toucherId].touches += 1;
+        }
+      }
+
+      function cloneStats(stats, unitIndex) {
+        const copy = {};
+        for (const [playerId, value] of Object.entries(stats)) {
+          copy[playerId] = { ...value, positions: { ...value.positions } };
+        }
+        copy.__unitIndex = unitIndex;
+        return copy;
+      }
+
+      function generateRotationBoard(team, attendingIds) {
+        const division = getDivision(team.divisionId);
+        const players = team.roster
+          .filter((player) => attendingIds.includes(player.id))
+          .map(normalizePlayer)
+          .sort(comparePlayers);
+        const warnings = [];
+
+        if (players.length < division.minPlayersToPlay) {
+          return {
+            ok: false,
+            warnings: [`Need at least ${division.minPlayersToPlay} players to play. You marked ${players.length}.`],
+            offense: [],
+            defense: [],
+            stats: {},
+            players
+          };
+        }
+
+        if (players.length < division.playersOnField) {
+          warnings.push(`You can play with ${players.length}, but the planner needs ${division.playersOnField} for full lineups.`);
+        }
+
+        const maxPlayersForHalfTime = division.playersOnField / division.minPlayingTimePercent;
+        if (players.length > maxPlayersForHalfTime) {
+          warnings.push(`50% playing time is not achievable with ${players.length} attending and only ${division.playersOnField} on the field.`);
+        }
+
+        warnings.push("50% playing time depends on the real number of plays and drives, so this board starts the rotation. Live tracking comes next.");
+
+        const stats = makeStats(players);
+        const offense = [];
+        const defense = [];
+        const offensePositions = division.offensePositions.slice(0, Math.min(division.playersOnField, players.length));
+        const defensePositions = division.defensePositions.slice(0, Math.min(division.playersOnField, players.length));
+        const lockedOffensePositions = (division.lockedOffensePositions || []).filter((position) => offensePositions.includes(position));
+        const offensePreviewCount = Math.max(4, Math.ceil(players.length / Math.max(1, players.length - offensePositions.length)) + 1);
+        const defensePreviewCount = Math.max(4, Math.ceil(players.length / Math.max(1, players.length - defensePositions.length)) + 1);
+        const lockedRolePlayerCounts = {};
+        let unitIndex = 0;
+
+        for (let driveNumber = 1; driveNumber <= offensePreviewCount; driveNumber += 1) {
+          const statsBefore = cloneStats(stats, unitIndex);
+          const lineup = chooseLineup({
+            side: "offense",
+            positions: offensePositions,
+            players,
+            stats,
+            unitIndex,
+            minTarget: 0,
+            lockedPositions: lockedOffensePositions,
+            lockedRolePlayerCounts
+          });
+
+          if (!lineup) {
+            warnings.push(`Could not build legal offense lineup for drive ${driveNumber}. Check cannot-play positions.`);
+            break;
+          }
+
+          offense.push({ number: driveNumber, lineup, lockedPositions: lockedOffensePositions, statsBefore });
+          for (const position of lockedOffensePositions) {
+            const playerId = lineup[position];
+            if (playerId) {
+              lockedRolePlayerCounts[playerId] = (lockedRolePlayerCounts[playerId] || 0) + 1;
+            }
+          }
+          applyLineupStats(lineup, "offense", stats, unitIndex);
+          unitIndex += 1;
+        }
+
+        for (const [playerId, count] of Object.entries(lockedRolePlayerCounts)) {
+          if (count > 1) {
+            const player = players.find((kid) => kid.id === playerId);
+            warnings.push(`${player?.name || "A player"} is assigned QB/Center on ${count} offensive drives because of roster constraints.`);
+          }
+        }
+
+        for (let driveNumber = 1; driveNumber <= defensePreviewCount; driveNumber += 1) {
+          const statsBefore = cloneStats(stats, unitIndex);
+          const lineup = chooseLineup({
+            side: "defense",
+            positions: defensePositions,
+            players,
+            stats,
+            unitIndex,
+            minTarget: 0
+          });
+
+          if (!lineup) {
+            warnings.push(`Could not build legal defense lineup for drive ${driveNumber}. Check cannot-play positions.`);
+            break;
+          }
+
+          defense.push({ number: driveNumber, lineup, statsBefore });
+          applyLineupStats(lineup, "defense", stats, unitIndex);
+          unitIndex += 1;
+        }
+
+        return {
+          ok: true,
+          warnings,
+          offense,
+          defense,
+          stats,
+          players
+        };
+      }
+
+      function resetPlayerForm() {
+        els.playerIdInput.value = "";
+        els.playerNameInput.value = "";
+        els.jerseyInput.value = "";
+        els.skillInput.value = "3";
+        els.notesInput.value = "";
+        els.cancelEditPlayerBtn.classList.add("hidden");
+        renderPositionOptions();
+      }
+
+      function editPlayer(playerId) {
+        const team = getSelectedTeam();
+        const player = team.roster.find((kid) => kid.id === playerId);
+        if (!player) return;
+
+        els.playerIdInput.value = player.id;
+        els.playerNameInput.value = player.name;
+        els.jerseyInput.value = player.jersey || "";
+        els.skillInput.value = player.skill || 3;
+        els.notesInput.value = player.notes || "";
+        els.cancelEditPlayerBtn.classList.remove("hidden");
+        renderPositionOptions(player);
+        els.playerNameInput.focus();
+      }
+
+      function deletePlayer(playerId) {
+        const team = getSelectedTeam();
+        const player = team.roster.find((kid) => kid.id === playerId);
+        if (!player) return;
+
+        if (!confirm(`Remove ${player.name} from this roster?`)) return;
+
+        team.roster = team.roster.filter((kid) => kid.id !== playerId);
+        if (team.touchTracker) {
+          if (team.touchTracker.counts) {
+            delete team.touchTracker.counts[playerId];
+          }
+          team.touchTracker.history = (team.touchTracker.history || []).filter((entry) => entry.playerId !== playerId);
+        }
+        for (const side of ["offense", "defense"]) {
+          for (const position of Object.keys(team.manualStartingLineup?.[side] || {})) {
+            if (team.manualStartingLineup[side][position] === playerId) {
+              delete team.manualStartingLineup[side][position];
+            }
+          }
+        }
+        saveState();
+        resetPlayerForm();
+        render();
+        saveSelectedCloudTeam();
+      }
+
+      function renderTeamList() {
+        if (state.teams.length === 0) {
+          els.teamListView.innerHTML = `
+            <div class="rounded-md border border-dashed border-slate-300 bg-white p-6 text-center">
+              <h2 class="text-2xl font-bold">No teams yet</h2>
+              <p class="mt-2 text-slate-600">Create your Boys 6U team, then add the roster.</p>
+              <button class="mt-4 min-h-12 rounded-md bg-emerald-700 px-5 py-3 font-bold text-white active:bg-emerald-800" data-action="new-team">
+                Create First Team
+              </button>
+            </div>
+          `;
+          return;
+        }
+
+        els.teamListView.innerHTML = `
+          <div class="grid gap-3">
+            ${state.teams
+              .map((team) => {
+                const division = getDivision(team.divisionId);
+                const name = escapeHtml(team.name || "Untitled Team");
+                return `
+                  <article class="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <div class="flex flex-wrap items-center gap-2">
+                          <h2 class="text-xl font-bold">${name}</h2>
+                          ${teamStorageBadgeHtml(team)}
+                        </div>
+                        <p class="text-sm text-slate-600">${division.divisionName} - ${team.roster.length} kids</p>
+                      </div>
+                      <button class="min-h-12 rounded-md bg-slate-900 px-5 py-3 font-bold text-white active:bg-slate-700" data-action="open-team" data-team-id="${team.id}">
+                        Open
+                      </button>
+                    </div>
+                  </article>
+                `;
+              })
+              .join("")}
+          </div>
+        `;
+      }
+
+      function renderGameDayTeamSelect() {
+        const team = getSelectedTeam();
+        els.gameDayTeamSelect.innerHTML = state.teams
+          .map((item) => {
+            const selected = item.id === team?.id ? "selected" : "";
+            const label = escapeHtml(`${teamStorageLabel(item)} - ${item.name || "Untitled Team"}`);
+            return `<option value="${item.id}" ${selected}>${label}</option>`;
+          })
+          .join("");
+      }
+
+      function renderPlayerList() {
+        const team = getSelectedTeam();
+        if (!team) return;
+
+        els.rosterCount.textContent = `${team.roster.length} kid${team.roster.length === 1 ? "" : "s"} on roster`;
+
+        if (team.roster.length === 0) {
+          els.playerList.innerHTML = `
+            <div class="rounded-md border border-dashed border-slate-300 bg-slate-50 p-5 text-center text-slate-600">
+              Add your first kid above.
+            </div>
+          `;
+          return;
+        }
+
+        els.playerList.innerHTML = team.roster
+          .map((player) => {
+            const preferredOffense = player.preferredPositions?.offense?.join(", ") || "None";
+            const preferredDefense = player.preferredPositions?.defense?.join(", ") || "None";
+            const cannotOffense = player.cannotPlayPositions?.offense?.join(", ") || "None";
+            const cannotDefense = player.cannotPlayPositions?.defense?.join(", ") || "None";
+            const jersey = player.jersey ? `#${escapeHtml(player.jersey)}` : "No jersey";
+
+            return `
+              <article class="rounded-md border border-slate-200 p-4">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <h3 class="text-lg font-bold">${escapeHtml(player.name)} <span class="text-sm font-semibold text-slate-500">${jersey}</span></h3>
+                    <p class="text-sm font-semibold text-slate-700">Skill: ${player.skill}/5</p>
+                  </div>
+                  <div class="flex gap-2">
+                    <button class="min-h-11 rounded-md border border-slate-300 px-4 py-2 font-semibold active:bg-slate-100" data-action="edit-player" data-player-id="${player.id}">
+                      Edit
+                    </button>
+                    <button class="min-h-11 rounded-md border border-red-200 px-4 py-2 font-semibold text-red-700 active:bg-red-50" data-action="delete-player" data-player-id="${player.id}">
+                      Remove
+                    </button>
+                  </div>
+                </div>
+                <dl class="mt-3 grid gap-2 text-sm text-slate-700 sm:grid-cols-2">
+                  <div><dt class="font-bold">Preferred offense</dt><dd>${escapeHtml(preferredOffense)}</dd></div>
+                  <div><dt class="font-bold">Preferred defense</dt><dd>${escapeHtml(preferredDefense)}</dd></div>
+                  <div><dt class="font-bold">Cannot-play offense</dt><dd>${escapeHtml(cannotOffense)}</dd></div>
+                  <div><dt class="font-bold">Cannot-play defense</dt><dd>${escapeHtml(cannotDefense)}</dd></div>
+                </dl>
+                ${player.notes ? `<p class="mt-3 rounded-md bg-slate-50 p-3 text-sm text-slate-700">${escapeHtml(player.notes)}</p>` : ""}
+              </article>
+            `;
+          })
+          .join("");
+      }
+
+      function renderTouchTracker() {
+        const team = getSelectedTeam();
+        if (!team) return;
+        ensureTouchTracker(team);
+
+        const attendingIds = new Set(getAttendingPlayerIds());
+        const activePlayers = team.roster.filter((player) => attendingIds.has(player.id));
+
+        if (team.roster.length === 0) {
+          els.touchTrackerStatus.textContent = "Add roster kids before tracking touches.";
+          els.touchTrackerList.innerHTML = "";
+          return;
+        }
+
+        if (activePlayers.length === 0) {
+          els.touchTrackerStatus.textContent = "No attending kids selected.";
+          els.touchTrackerList.innerHTML = "";
+          return;
+        }
+
+        const players = [...activePlayers].sort(comparePlayers);
+        const counts = players.map((player) => team.touchTracker.counts[player.id] || 0);
+        const minTouches = Math.min(...counts);
+        const maxTouches = Math.max(...counts);
+        const nextNames = players
+          .filter((player) => (team.touchTracker.counts[player.id] || 0) === minTouches)
+          .map((player) => player.name)
+          .join(", ");
+        const totalTouches = counts.reduce((sum, count) => sum + count, 0);
+        const averageTouches = totalTouches / players.length;
+
+        els.touchTrackerStatus.textContent = `Total touches: ${totalTouches}. Average: ${averageTouches.toFixed(1)}. Needs it now: ${nextNames}.`;
+        els.touchTrackerList.innerHTML = players
+          .map((player) => {
+            const count = team.touchTracker.counts[player.id] || 0;
+            const hasSpread = maxTouches > minTouches;
+            const isLowestGroup = hasSpread && count === minTouches;
+            const isMiddleGroup = hasSpread && count > minTouches && count < maxTouches;
+            let statusLabel = "Good";
+            const urgencyClasses =
+              isLowestGroup
+                ? "border-red-500 bg-red-50 text-red-950"
+                : isMiddleGroup
+                  ? "border-orange-400 bg-orange-50 text-orange-950"
+                  : "border-emerald-500 bg-emerald-50 text-emerald-950";
+            const countClasses =
+              isLowestGroup
+                ? "bg-red-700"
+                : isMiddleGroup
+                  ? "bg-orange-600"
+                  : "bg-emerald-700";
+            if (isLowestGroup) {
+              statusLabel = "Needs it ASAP";
+            } else if (isMiddleGroup) {
+              statusLabel = "Target soon";
+            }
+            return `
+              <button class="min-h-16 rounded-md border-2 ${urgencyClasses} p-3 text-left active:brightness-95" type="button" data-action="add-touch" data-player-id="${player.id}">
+                <span class="flex items-center justify-between gap-3">
+                  <span>
+                    <span class="block text-lg font-bold">${escapeHtml(playerLabel(player))}</span>
+                    <span class="text-xs font-bold uppercase tracking-wide">${statusLabel}</span>
+                  </span>
+                  <span class="rounded-md ${countClasses} px-3 py-2 text-xl font-bold text-white">${count}</span>
+                </span>
+              </button>
+            `;
+          })
+          .join("");
+      }
+
+      function renderAttendanceOptions() {
+        const team = getSelectedTeam();
+        if (!team) return;
+
+        if (team.roster.length === 0) {
+          els.attendanceOptions.innerHTML = `
+            <div class="rounded-md border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
+              Add roster kids below before generating lineups.
+            </div>
+          `;
+          return;
+        }
+
+        els.attendanceOptions.innerHTML = [...team.roster]
+          .sort(comparePlayers)
+          .map((player) => {
+            return `
+              <label class="flex min-h-12 items-center gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 font-semibold">
+                <input class="h-6 w-6 accent-emerald-700" type="checkbox" name="attendance" value="${player.id}" checked />
+                <span>${escapeHtml(playerLabel(player))}</span>
+              </label>
+            `;
+          })
+          .join("");
+      }
+
+      function renderLineupCard({ title, item, side, playersById, division }) {
+        return `
+          <article class="rounded-md border border-slate-200 bg-white p-3">
+            <h4 class="text-base font-bold">${escapeHtml(title)}</h4>
+            <div class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              ${orderedLineupEntries(item.lineup, side)
+                .map(([position, playerId]) => {
+                  const player = playersById[playerId];
+                  const colors = positionColorClasses(position, division);
+                  const label = positionLabel(position, division);
+                  const lockedBadge =
+                    item.lockedPositions?.includes(position)
+                      ? '<span class="rounded bg-white/80 px-2 py-1 text-xs font-bold text-slate-800">locked drive</span>'
+                      : "";
+                  return `
+                    <div class="rounded-md border-2 ${colors.bg} ${colors.border} ${colors.text} p-3">
+                      <div class="flex items-start justify-between gap-2">
+                        <div>
+                          <p class="inline-flex rounded px-2 py-1 text-xs font-bold uppercase tracking-wide ${colors.badge} ${colors.badgeText}">${escapeHtml(label)}</p>
+                          <p class="text-base font-bold">${escapeHtml(playerLabel(player))}</p>
+                        </div>
+                        <div class="flex flex-col items-end gap-1">${lockedBadge}</div>
+                      </div>
+                    </div>
+                  `;
+                })
+                .join("")}
+            </div>
+          </article>
+        `;
+      }
+
+      function renderLineupResults(plan, target = els.lineupResults) {
+        if (!plan.ok) {
+          target.innerHTML = `
+            <div class="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-900">
+              <h3 class="font-bold">Cannot generate lineups yet</h3>
+              <ul class="mt-2 list-disc space-y-1 pl-5">
+                ${plan.warnings.map((warning) => `<li>${escapeHtml(warning)}</li>`).join("")}
+              </ul>
+            </div>
+          `;
+          return;
+        }
+
+        const playersById = Object.fromEntries(plan.players.map((player) => [player.id, player]));
+        const team = getSelectedTeam();
+        const division = getDivision(team?.divisionId);
+        const warningsHtml = plan.warnings.length
+          ? `
+            <div class="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              <h3 class="font-bold">Coach check</h3>
+              <ul class="mt-2 list-disc space-y-1 pl-5">
+                ${plan.warnings.map((warning) => `<li>${escapeHtml(warning)}</li>`).join("")}
+              </ul>
+            </div>
+          `
+          : `
+            <div class="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-900">
+              Rotation board is ready. Use the offensive and defensive drive queues as the game unfolds.
+            </div>
+          `;
+
+        target.innerHTML = `
+          ${warningsHtml}
+          <div class="rounded-md border border-slate-200 bg-white p-3">
+            <h3 class="text-lg font-bold">How to use this board</h3>
+            <p class="mt-1 text-sm text-slate-600">Use the next offensive drive card when your team gets the ball. QB and Center stay for that whole drive. Use the next defensive drive card whenever possession flips.</p>
+          </div>
+          <details class="rounded-md border border-slate-200 bg-white p-3" open>
+            <summary class="flex cursor-pointer list-none items-center justify-between gap-3 text-xl font-bold">
+              <span>Offensive Drive Queue</span>
+              <span class="chevron text-2xl text-slate-600">&rsaquo;</span>
+            </summary>
+            <div class="mt-3 grid gap-3">
+              ${plan.offense.map((item) => renderLineupCard({ title: `Drive ${item.number}`, item, side: "offense", playersById, division })).join("")}
+            </div>
+          </details>
+          <details class="rounded-md border border-slate-200 bg-white p-3" open>
+            <summary class="flex cursor-pointer list-none items-center justify-between gap-3 text-xl font-bold">
+              <span>Defense Drive Queue</span>
+              <span class="chevron text-2xl text-slate-600">&rsaquo;</span>
+            </summary>
+            <div class="mt-3 grid gap-3">
+              ${plan.defense.map((item) => renderLineupCard({ title: `Drive ${item.number}`, item, side: "defense", playersById, division })).join("")}
+            </div>
+          </details>
+        `;
+      }
+
+      function renderDefenseAudit(plan) {
+        if (!plan?.ok || !plan.defense?.length) {
+          els.defenseAuditContent.innerHTML = "Build a lineup to audit defensive balance.";
+          return;
+        }
+
+        const playersById = Object.fromEntries(plan.players.map((player) => [player.id, player]));
+        const auditRows = Object.fromEntries(
+          plan.players.map((player) => [
+            player.id,
+            {
+              player,
+              drives: 0,
+              positions: {}
+            }
+          ])
+        );
+
+        for (const drive of plan.defense) {
+          for (const [position, playerId] of Object.entries(drive.lineup)) {
+            if (!auditRows[playerId]) continue;
+            auditRows[playerId].drives += 1;
+            auditRows[playerId].positions[position] = (auditRows[playerId].positions[position] || 0) + 1;
+          }
+        }
+
+        const driveCount = plan.defense.length;
+        const spotsPerDrive = Object.keys(plan.defense[0]?.lineup || {}).length;
+        const expectedAverage = (driveCount * spotsPerDrive) / plan.players.length;
+        const rows = Object.values(auditRows).sort((a, b) => comparePlayers(a.player, b.player));
+        const maxDistance = Math.max(...rows.map((row) => Math.abs(row.drives - expectedAverage)));
+        const summary =
+          maxDistance <= 1
+            ? "Defense looks balanced: everyone is within about 1 drive of the expected average."
+            : "Check defense balance: at least one kid is more than 1 drive away from the expected average.";
+
+        const rowHtml = rows
+          .map((row) => {
+            const percent = Math.round((row.drives / driveCount) * 100);
+            const distance = row.drives - expectedAverage;
+            const rowClasses =
+              Math.abs(distance) <= 1
+                ? "border-emerald-300 bg-emerald-50 text-emerald-950"
+                : Math.abs(distance) <= 2
+                  ? "border-orange-300 bg-orange-50 text-orange-950"
+                  : "border-red-300 bg-red-50 text-red-950";
+            const positions = Object.entries(row.positions)
+              .map(([position, count]) => `${position}${count > 1 ? ` x${count}` : ""}`)
+              .join(", ") || "None";
+            return `
+              <div class="rounded-md border-2 ${rowClasses} p-3">
+                <div class="flex items-center justify-between gap-3">
+                  <span class="text-base font-bold">${escapeHtml(playerLabel(row.player))}</span>
+                  <span class="rounded-md bg-white/80 px-3 py-2 text-sm font-bold">${row.drives}/${driveCount} (${percent}%)</span>
+                </div>
+                <p class="mt-2 text-xs font-semibold">Positions: ${escapeHtml(positions)}</p>
+              </div>
+            `;
+          })
+          .join("");
+
+        els.defenseAuditContent.innerHTML = `
+          <div class="space-y-3">
+            <div class="rounded-md bg-white p-3">
+              <p class="font-bold">${escapeHtml(summary)}</p>
+              <p class="mt-1 text-sm text-slate-600">Expected average: ${expectedAverage.toFixed(1)} defensive drives per kid across ${driveCount} generated defensive drives.</p>
+            </div>
+            <div class="grid gap-2 sm:grid-cols-2">${rowHtml}</div>
+          </div>
+        `;
+      }
+
+      function renderTeamEditor() {
+        const team = getSelectedTeam();
+        if (!team) return;
+
+        renderGameDayTeamSelect();
+        els.teamNameInput.value = team.name;
+        els.divisionInput.value = team.divisionId;
+        const headCoach = isHeadCoach(team);
+        els.coachRoleBadge.textContent = `Role: ${roleLabel(team)}`;
+        els.teamStorageBadge.textContent = `Storage: ${teamStorageLabel(team)}`;
+        els.teamStorageBadge.className = team.cloudId
+          ? "rounded-md bg-sky-100 px-3 py-2 text-sm font-bold text-sky-900"
+          : "rounded-md bg-slate-100 px-3 py-2 text-sm font-bold text-slate-800";
+        els.showInviteCardBtn.classList.toggle("hidden", !team.cloudId || !headCoach);
+        els.gameDayInviteCard.classList.add("hidden");
+        els.gameDayInviteCodeInput.value = team.cloudId || "";
+        els.lineupPlannerSection.classList.toggle("hidden", !headCoach);
+        els.sharedLineupSection.classList.toggle("hidden", headCoach);
+        els.generateLineupBtn.disabled = !headCoach;
+        els.generateLineupBtn.classList.toggle("hidden", !headCoach);
+        els.setupTabBtn.disabled = !headCoach;
+        els.setupTabBtn.classList.toggle("opacity-50", !headCoach);
+        els.inviteCodePanel.classList.toggle("hidden", !team.cloudId || !headCoach);
+        els.inviteCodeInput.value = team.cloudId || "";
+        if (!headCoach && state.activeTeamTab === "setup") {
+          state.activeTeamTab = "game";
+        }
+        renderPositionOptions();
+        renderAttendanceOptions();
+        renderTouchTracker();
+        els.lineupResults.innerHTML = "";
+        els.sharedLineupResults.innerHTML = "";
+        els.defenseAuditContent.innerHTML = "Build a lineup to audit defensive balance.";
+        if (team.lastLineupPlan?.ok) {
+          renderLineupResults(team.lastLineupPlan, headCoach ? els.lineupResults : els.sharedLineupResults);
+          renderDefenseAudit(team.lastLineupPlan);
+        }
+        renderPlayerList();
+      }
+
+      function render() {
+        const team = getSelectedTeam();
+        renderTeamList();
+
+        if (team) {
+          els.teamListView.classList.add("hidden");
+          els.dataTransferView.classList.add("hidden");
+          els.cloudAccessView.classList.add("hidden");
+          els.teamEditorView.classList.remove("hidden");
+          renderTeamEditor();
+          setActiveTeamTab(state.activeTeamTab || "game");
+        } else {
+          els.teamEditorView.classList.add("hidden");
+          els.dataTransferView.classList.remove("hidden");
+          els.cloudAccessView.classList.remove("hidden");
+          els.teamListView.classList.remove("hidden");
+        }
+      }
+
+      function bindEvents() {
+        els.newTeamBtn.addEventListener("click", createTeam);
+
+        els.headerSignInBtn.addEventListener("click", signInToCloud);
+        els.headerSignUpBtn.addEventListener("click", signUpToCloud);
+        els.headerSignOutBtn.addEventListener("click", signOutOfCloud);
+        els.cloudSignInBtn.addEventListener("click", signInToCloud);
+        els.cloudSignUpBtn.addEventListener("click", signUpToCloud);
+        els.cloudSignOutBtn.addEventListener("click", signOutOfCloud);
+        els.cloudRefreshBtn.addEventListener("click", loadCloudTeams);
+        els.cloudSyncLocalBtn.addEventListener("click", uploadSelectedTeamToCloud);
+        els.confirmCloudUploadBtn.addEventListener("click", () => {
+          uploadLocalTeamToCloud(els.cloudUploadTeamSelect.value);
+        });
+        els.cancelCloudUploadBtn.addEventListener("click", () => {
+          els.cloudUploadPicker.classList.add("hidden");
+        });
+        els.joinTeamBtn.addEventListener("click", joinCloudTeam);
+        els.showInviteCardBtn.addEventListener("click", () => {
+          els.gameDayInviteCard.classList.toggle("hidden");
+        });
+        els.copyGameDayInviteCodeBtn.addEventListener("click", async () => {
+          const code = els.gameDayInviteCodeInput.value;
+          if (!code) return;
+          try {
+            await navigator.clipboard.writeText(code);
+            els.cloudStatus.textContent = "Invite code copied.";
+          } catch (error) {
+            els.gameDayInviteCodeInput.select();
+            els.cloudStatus.textContent = "Copy the selected invite code.";
+          }
+        });
+        els.copyInviteCodeBtn.addEventListener("click", async () => {
+          const code = els.inviteCodeInput.value;
+          if (!code) return;
+          try {
+            await navigator.clipboard.writeText(code);
+            els.cloudStatus.textContent = "Invite code copied.";
+          } catch (error) {
+            els.inviteCodeInput.select();
+            els.cloudStatus.textContent = "Copy the selected invite code.";
+          }
+        });
+
+        els.gameDayTabBtn.addEventListener("click", () => {
+          setActiveTeamTab("game");
+        });
+
+        els.setupTabBtn.addEventListener("click", () => {
+          if (!isHeadCoach()) return;
+          setActiveTeamTab("setup");
+        });
+
+        els.gameDayTeamSelect.addEventListener("change", () => {
+          state.selectedTeamId = els.gameDayTeamSelect.value;
+          state.activeTeamTab = "game";
+          saveState();
+          render();
+          subscribeToSelectedCloudTeam();
+        });
+
+        els.exportDataBtn.addEventListener("click", async () => {
+          const exported = JSON.stringify(getExportPayload());
+          els.dataTransferText.classList.remove("hidden");
+          els.dataTransferText.value = exported;
+          els.dataTransferText.focus();
+          els.dataTransferText.select();
+
+          try {
+            await navigator.clipboard.writeText(exported);
+            els.dataTransferStatus.textContent = "Data copied. Open the site on your phone, paste it here, then tap Import Data.";
+          } catch (error) {
+            els.dataTransferStatus.textContent = "Copy the selected data, open the site on your phone, paste it here, then tap Import Data.";
+          }
+        });
+
+        els.importDataBtn.addEventListener("click", () => {
+          els.dataTransferText.classList.remove("hidden");
+          if (!els.dataTransferText.value.trim()) {
+            els.dataTransferText.focus();
+            els.dataTransferStatus.textContent = "Paste exported data into the box, then tap Import Data again.";
+            return;
+          }
+
+          if (state.teams.length > 0 && !confirm("Importing will replace teams saved on this device. Continue?")) {
+            return;
+          }
+
+          try {
+            importPayload(els.dataTransferText.value.trim());
+            els.dataTransferStatus.textContent = "Imported. Your teams are now saved on this device.";
+            els.dataTransferText.value = "";
+            els.dataTransferText.classList.add("hidden");
+            render();
+          } catch (error) {
+            els.dataTransferStatus.textContent = error.message || "Import failed. Check the pasted data.";
+          }
+        });
+
+        els.teamListView.addEventListener("click", (event) => {
+          const button = event.target.closest("button");
+          if (!button) return;
+
+          if (button.dataset.action === "new-team") {
+            createTeam();
+          }
+
+          if (button.dataset.action === "open-team") {
+            state.selectedTeamId = button.dataset.teamId;
+            state.activeTeamTab = "game";
+            saveState();
+            render();
+            subscribeToSelectedCloudTeam();
+          }
+        });
+
+        els.backToTeamsBtn.addEventListener("click", () => {
+          state.selectedTeamId = null;
+          state.activeTeamTab = "game";
+          saveState();
+          render();
+        });
+
+        els.deleteTeamBtn.addEventListener("click", () => {
+          const team = getSelectedTeam();
+          if (!team) return;
+          const name = team.name || "this team";
+          if (!confirm(`Delete ${name} and its roster?`)) return;
+
+          state.teams = state.teams.filter((item) => item.id !== team.id);
+          state.selectedTeamId = null;
+          saveState();
+          render();
+        });
+
+        els.teamForm.addEventListener("submit", (event) => {
+          event.preventDefault();
+          const team = getSelectedTeam();
+          if (!team) return;
+
+          team.name = els.teamNameInput.value.trim();
+          team.divisionId = els.divisionInput.value;
+          team.manualStartingLineup = team.manualStartingLineup || emptyManualLineup();
+          saveState();
+          render();
+          saveSelectedCloudTeam();
+        });
+
+        els.divisionInput.addEventListener("change", () => {
+          renderPositionOptions();
+        });
+
+        els.generateLineupBtn.addEventListener("click", () => {
+          const team = getSelectedTeam();
+          if (!team) return;
+          if (!isHeadCoach(team)) {
+            els.cloudStatus.textContent = "Only the head coach can build or rebuild the lineup.";
+            return;
+          }
+
+          const attendingIds = getAttendingPlayerIds();
+          const plan = generateRotationBoard(team, attendingIds);
+          team.lastLineupPlan = plan;
+          renderLineupResults(plan);
+          renderDefenseAudit(plan);
+          saveSelectedCloudTeam();
+        });
+
+        els.attendanceOptions.addEventListener("change", () => {
+          renderTouchTracker();
+          saveSelectedCloudTeam();
+        });
+
+        els.touchTrackerList.addEventListener("click", (event) => {
+          const button = event.target.closest("button[data-action='add-touch']");
+          if (!button) return;
+
+          const team = getSelectedTeam();
+          if (!team) return;
+          ensureTouchTracker(team);
+
+          const playerId = button.dataset.playerId;
+          team.touchTracker.counts[playerId] = (team.touchTracker.counts[playerId] || 0) + 1;
+          team.touchTracker.history.push({
+            playerId,
+            timestamp: new Date().toISOString()
+          });
+          saveState();
+          renderTouchTracker();
+          saveSelectedCloudTeam();
+        });
+
+        els.undoTouchBtn.addEventListener("click", () => {
+          const team = getSelectedTeam();
+          if (!team) return;
+          ensureTouchTracker(team);
+
+          const lastTouch = team.touchTracker.history.pop();
+          if (!lastTouch) return;
+
+          team.touchTracker.counts[lastTouch.playerId] = Math.max(0, (team.touchTracker.counts[lastTouch.playerId] || 0) - 1);
+          saveState();
+          renderTouchTracker();
+          saveSelectedCloudTeam();
+        });
+
+        els.resetTouchesBtn.addEventListener("click", () => {
+          const team = getSelectedTeam();
+          if (!team) return;
+          if (!confirm("Reset touch counts for this game?")) return;
+
+          team.touchTracker = emptyTouchTracker();
+          ensureTouchTracker(team);
+          saveState();
+          renderTouchTracker();
+          saveSelectedCloudTeam();
+        });
+
+        els.clearPlayerFormBtn.addEventListener("click", resetPlayerForm);
+        els.cancelEditPlayerBtn.addEventListener("click", resetPlayerForm);
+
+        els.playerForm.addEventListener("submit", (event) => {
+          event.preventDefault();
+          const team = getSelectedTeam();
+          if (!team) return;
+
+          const skill = Number(els.skillInput.value);
+          if (skill < 1 || skill > 5) {
+            alert("Skill must be a number from 1 to 5.");
+            return;
+          }
+
+          const playerData = {
+            name: els.playerNameInput.value.trim(),
+            jersey: els.jerseyInput.value.trim(),
+            skill,
+            preferredPositions: {
+              offense: getCheckedValues("preferredOffense"),
+              defense: getCheckedValues("preferredDefense")
+            },
+            cannotPlayPositions: {
+              offense: getCheckedValues("cannotOffense"),
+              defense: getCheckedValues("cannotDefense")
+            },
+            notes: els.notesInput.value.trim()
+          };
+
+          if (!playerData.name) return;
+
+          const existingPlayerId = els.playerIdInput.value;
+          if (existingPlayerId) {
+            const index = team.roster.findIndex((kid) => kid.id === existingPlayerId);
+            if (index >= 0) {
+              team.roster[index] = {
+                ...team.roster[index],
+                ...playerData
+              };
+            }
+          } else {
+            team.roster.push({
+              id: makeId("kid"),
+              ...playerData
+            });
+          }
+
+          saveState();
+          resetPlayerForm();
+          render();
+          saveSelectedCloudTeam();
+        });
+
+        els.playerList.addEventListener("click", (event) => {
+          const button = event.target.closest("button");
+          if (!button) return;
+
+          if (button.dataset.action === "edit-player") {
+            editPlayer(button.dataset.playerId);
+          }
+
+          if (button.dataset.action === "delete-player") {
+            deletePlayer(button.dataset.playerId);
+          }
+        });
+      }
+
+      renderDivisionOptions();
+      loadState();
+      bindEvents();
+      render();
+      initCloud();
+    </script>
+  </body>
+</html>
