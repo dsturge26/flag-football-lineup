@@ -8,6 +8,7 @@ Single-file web app for youth flag football lineup planning, shared coach access
 - `supabase_setup.sql` - main Supabase schema and policies
 - `supabase_create_team_function.sql` - helper function for cloud team creation
 - `supabase_role_lockdown.sql` - database guard for assistant coach permissions
+- `supabase_email_invites.sql` - email-based assistant coach invitations
 
 ## Deploy
 

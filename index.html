@@ -72,11 +72,9 @@
               Sign Out
             </button>
           </div>
-          <div class="grid gap-2 sm:grid-cols-[1fr_auto]">
-            <input id="joinTeamCodeInput" class="min-h-11 rounded-md border border-slate-300 px-3 text-base" placeholder="Paste team invite code" />
-            <button id="joinTeamBtn" class="min-h-11 rounded-md border border-emerald-300 px-4 py-2 font-semibold text-emerald-800 active:bg-emerald-50" type="button">
-              Join as Assistant
-            </button>
+          <div id="pendingInvitesPanel" class="hidden rounded-md border border-emerald-200 bg-emerald-50 p-3">
+            <h3 class="text-base font-bold text-emerald-950">Team Invitations</h3>
+            <div id="pendingInvitesList" class="mt-2 grid gap-2"></div>
           </div>
         </div>
         <p id="cloudStatus" class="text-sm font-semibold text-slate-700">Cloud not signed in.</p>
@@ -109,11 +107,11 @@
               </button>
             </div>
             <div id="gameDayInviteCard" class="hidden rounded-md border border-emerald-200 bg-emerald-50 p-3">
-              <p class="text-sm font-bold text-emerald-950">Assistant coaches join with this code and get assistant access.</p>
+              <p class="text-sm font-bold text-emerald-950">Invite an assistant coach by email. They will see the invitation after signing in.</p>
               <div class="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
-                <input id="gameDayInviteCodeInput" class="min-h-11 rounded-md border border-emerald-300 bg-white px-3 font-mono text-sm" readonly />
-                <button id="copyGameDayInviteCodeBtn" class="min-h-11 rounded-md bg-emerald-700 px-4 py-2 font-semibold text-white active:bg-emerald-800" type="button">
-                  Copy Code
+                <input id="gameDayInviteEmailInput" class="min-h-11 rounded-md border border-emerald-300 bg-white px-3 text-base" type="email" placeholder="assistant@email.com" />
+                <button id="sendGameDayInviteBtn" class="min-h-11 rounded-md bg-emerald-700 px-4 py-2 font-semibold text-white active:bg-emerald-800" type="button">
+                  Send Invite
                 </button>
               </div>
             </div>
@@ -213,12 +211,12 @@
         </div>
 
         <section id="inviteCodePanel" class="hidden space-y-2 rounded-md border border-emerald-200 bg-emerald-50 p-4">
-          <h2 class="text-xl font-bold text-emerald-950">Coach Invite Code</h2>
-          <p class="text-sm text-emerald-900">Share this with an assistant coach after they sign in.</p>
+          <h2 class="text-xl font-bold text-emerald-950">Invite Assistant Coach</h2>
+          <p class="text-sm text-emerald-900">Send an app invitation by email. The coach can accept it after signing in.</p>
           <div class="grid gap-2 sm:grid-cols-[1fr_auto]">
-            <input id="inviteCodeInput" class="min-h-11 rounded-md border border-emerald-300 bg-white px-3 font-mono text-sm" readonly />
-            <button id="copyInviteCodeBtn" class="min-h-11 rounded-md bg-emerald-700 px-4 py-2 font-semibold text-white active:bg-emerald-800" type="button">
-              Copy
+            <input id="setupInviteEmailInput" class="min-h-11 rounded-md border border-emerald-300 bg-white px-3 text-base" type="email" placeholder="assistant@email.com" />
+            <button id="sendSetupInviteBtn" class="min-h-11 rounded-md bg-emerald-700 px-4 py-2 font-semibold text-white active:bg-emerald-800" type="button">
+              Send Invite
             </button>
           </div>
         </section>
@@ -374,6 +372,7 @@
         activeTeamTab: "game",
         user: null,
         memberships: [],
+        pendingInvites: [],
         cloudChannel: null
       };
 
@@ -398,12 +397,12 @@
         cloudSignUpBtn: document.querySelector("#cloudSignUpBtn"),
         cloudRefreshBtn: document.querySelector("#cloudRefreshBtn"),
         cloudSignOutBtn: document.querySelector("#cloudSignOutBtn"),
-        joinTeamCodeInput: document.querySelector("#joinTeamCodeInput"),
-        joinTeamBtn: document.querySelector("#joinTeamBtn"),
+        pendingInvitesPanel: document.querySelector("#pendingInvitesPanel"),
+        pendingInvitesList: document.querySelector("#pendingInvitesList"),
         cloudStatus: document.querySelector("#cloudStatus"),
         inviteCodePanel: document.querySelector("#inviteCodePanel"),
-        inviteCodeInput: document.querySelector("#inviteCodeInput"),
-        copyInviteCodeBtn: document.querySelector("#copyInviteCodeBtn"),
+        setupInviteEmailInput: document.querySelector("#setupInviteEmailInput"),
+        sendSetupInviteBtn: document.querySelector("#sendSetupInviteBtn"),
         teamEditorView: document.querySelector("#teamEditorView"),
         gameDayTabBtn: document.querySelector("#gameDayTabBtn"),
         setupTabBtn: document.querySelector("#setupTabBtn"),
@@ -413,8 +412,8 @@
         coachRoleBadge: document.querySelector("#coachRoleBadge"),
         showInviteCardBtn: document.querySelector("#showInviteCardBtn"),
         gameDayInviteCard: document.querySelector("#gameDayInviteCard"),
-        gameDayInviteCodeInput: document.querySelector("#gameDayInviteCodeInput"),
-        copyGameDayInviteCodeBtn: document.querySelector("#copyGameDayInviteCodeBtn"),
+        gameDayInviteEmailInput: document.querySelector("#gameDayInviteEmailInput"),
+        sendGameDayInviteBtn: document.querySelector("#sendGameDayInviteBtn"),
         teamStorageBadge: document.querySelector("#teamStorageBadge"),
         newTeamBtn: document.querySelector("#newTeamBtn"),
         backToTeamsBtn: document.querySelector("#backToTeamsBtn"),
@@ -497,7 +496,7 @@
         els.headerSignedInLabel.textContent = signedIn ? `Signed in as ${state.user.email}` : "";
         els.cloudAccessTitle.textContent = signedIn ? "Coach Access" : "Coach Login";
         els.cloudAccessSubtitle.textContent = signedIn
-          ? "Create a cloud team, refresh your teams, or join another team as an assistant."
+          ? "Create a cloud team, refresh your teams, or accept an assistant coach invitation."
           : "Sign in or create an account to view cloud teams, build lineups, or join as an assistant coach.";
         els.cloudStatus.textContent = signedIn
           ? `Signed in as ${state.user.email}. User id: ${state.user.id}. Cloud teams loaded: ${state.memberships.length}.`
@@ -515,6 +514,7 @@
         renderCloudStatus();
         if (state.user) {
           await loadCloudTeams();
+          await loadPendingInvites();
         }
 
         cloud.auth.onAuthStateChange(async (_event, session) => {
@@ -522,8 +522,10 @@
           renderCloudStatus();
           if (state.user) {
             await loadCloudTeams();
+            await loadPendingInvites();
           } else {
             state.memberships = [];
+            state.pendingInvites = [];
             state.teams = [];
             state.selectedTeamId = null;
             saveState();
@@ -586,6 +588,7 @@
         await cloud.auth.signOut();
         state.user = null;
         state.memberships = [];
+        state.pendingInvites = [];
         state.teams = [];
         state.selectedTeamId = null;
         renderCloudStatus();
@@ -633,14 +636,58 @@
         subscribeToSelectedCloudTeam();
       }
 
-      async function joinCloudTeam() {
-        const teamId = els.joinTeamCodeInput.value.trim();
-        if (!teamId || !state.user) return;
+      async function loadPendingInvites({ renderAfter = true } = {}) {
+        if (!state.user) return;
 
-        const { error } = await cloud.from("team_members").insert({
-          team_id: teamId,
-          user_id: state.user.id,
-          role: "assistant"
+        const email = (state.user.email || "").trim().toLowerCase();
+        if (!email) return;
+
+        const { data, error } = await cloud
+          .from("team_invites")
+          .select("id, team_id, team_name, invited_email, role, created_at")
+          .eq("invited_email", email)
+          .eq("status", "pending")
+          .order("created_at", { ascending: false });
+
+        if (error) {
+          state.pendingInvites = [];
+          els.cloudStatus.textContent = error.message.includes("team_invites")
+            ? "Email invites need the new Supabase invite setup SQL."
+            : error.message;
+          if (renderAfter) renderPendingInvites();
+          return;
+        }
+
+        state.pendingInvites = data || [];
+        if (renderAfter) renderPendingInvites();
+      }
+
+      function renderPendingInvites() {
+        if (!els.pendingInvitesPanel || !els.pendingInvitesList) return;
+
+        const invites = state.pendingInvites || [];
+        els.pendingInvitesPanel.classList.toggle("hidden", invites.length === 0);
+        els.pendingInvitesList.innerHTML = invites
+          .map((invite) => {
+            const teamName = invite.team_name || "Shared team";
+            return `
+              <div class="rounded-md border border-emerald-200 bg-white p-3">
+                <p class="font-bold text-emerald-950">${escapeHtml(teamName)}</p>
+                <p class="text-sm text-emerald-900">Assistant coach invitation</p>
+                <button class="mt-2 min-h-11 w-full rounded-md bg-emerald-700 px-4 py-2 font-semibold text-white active:bg-emerald-800" type="button" data-action="accept-invite" data-invite-id="${invite.id}">
+                  Accept Team Invite
+                </button>
+              </div>
+            `;
+          })
+          .join("");
+      }
+
+      async function acceptTeamInvite(inviteId) {
+        if (!inviteId || !state.user) return;
+
+        const { error } = await cloud.rpc("accept_team_invite", {
+          p_invite_id: inviteId
         });
 
         if (error) {
@@ -648,9 +695,46 @@
           return;
         }
 
-        els.joinTeamCodeInput.value = "";
+        els.cloudStatus.textContent = "Team invite accepted.";
         await loadCloudTeams();
-        els.cloudStatus.textContent = "Joined team as assistant coach.";
+        await loadPendingInvites();
+      }
+
+      async function sendTeamInvite(input) {
+        const team = getSelectedTeam();
+        if (!team?.cloudId || !isHeadCoach(team)) {
+          els.cloudStatus.textContent = "Only the head coach can invite assistant coaches.";
+          return;
+        }
+
+        const email = (input?.value || "").trim().toLowerCase();
+        if (!email || !email.includes("@")) {
+          els.cloudStatus.textContent = "Enter the assistant coach email first.";
+          input?.focus();
+          return;
+        }
+
+        const { error } = await cloud.from("team_invites").upsert(
+          {
+            team_id: team.cloudId,
+            team_name: team.name || "Untitled Team",
+            invited_email: email,
+            role: "assistant",
+            status: "pending",
+            invited_by: state.user.id
+          },
+          { onConflict: "team_id,invited_email" }
+        );
+
+        if (error) {
+          els.cloudStatus.textContent = error.message.includes("team_invites")
+            ? "Email invites need the new Supabase invite setup SQL."
+            : error.message;
+          return;
+        }
+
+        input.value = "";
+        els.cloudStatus.textContent = `Invite sent to ${email}.`;
       }
 
       async function saveSelectedCloudTeam() {
@@ -706,14 +790,18 @@
 
       function isHeadCoach(team = getSelectedTeam()) {
         if (!team?.cloudId) return false;
+        if (team.createdBy && team.createdBy === state.user?.id) return true;
         const membership = state.memberships.find((item) => item.team_id === team.cloudId);
         return membership?.role === "head";
       }
 
       function roleLabel(team = getSelectedTeam()) {
         if (!team?.cloudId) return "Cloud only";
+        if (team.createdBy && team.createdBy === state.user?.id) return "Head coach";
         const membership = state.memberships.find((item) => item.team_id === team.cloudId);
-        return membership?.role === "head" ? "Head coach" : "Assistant coach";
+        if (membership?.role === "head") return "Head coach";
+        if (membership?.role === "assistant") return "Assistant coach";
+        return "Loading role";
       }
 
       function teamStorageLabel(team) {
@@ -752,6 +840,7 @@
           cloudId: row.id,
           name: row.name,
           divisionId: row.division_id,
+          createdBy: row.created_by,
           roster: row.roster || [],
           manualStartingLineup: emptyManualLineup(),
           touchTracker: row.touch_tracker || emptyTouchTracker(),
@@ -867,6 +956,11 @@
         const team = cloudRowToTeam(insertedTeam);
         state.teams = state.teams.filter((item) => item.cloudId !== team.cloudId);
         state.teams.unshift(team);
+        state.memberships = state.memberships.filter((membership) => membership.team_id !== team.cloudId);
+        state.memberships.unshift({
+          team_id: team.cloudId,
+          role: "head"
+        });
         state.selectedTeamId = team.id;
         state.activeTeamTab = "setup";
         saveState();
@@ -1599,7 +1693,6 @@
         els.deleteTeamBtn.classList.add("hidden");
         els.showInviteCardBtn.classList.toggle("hidden", !team.cloudId || !headCoach);
         els.gameDayInviteCard.classList.add("hidden");
-        els.gameDayInviteCodeInput.value = team.cloudId || "";
         els.lineupPlannerSection.classList.toggle("hidden", !headCoach);
         els.sharedLineupSection.classList.toggle("hidden", headCoach);
         els.generateLineupBtn.disabled = !headCoach;
@@ -1607,7 +1700,6 @@
         els.setupTabBtn.disabled = !headCoach;
         els.setupTabBtn.classList.toggle("opacity-50", !headCoach);
         els.inviteCodePanel.classList.toggle("hidden", !team.cloudId || !headCoach);
-        els.inviteCodeInput.value = team.cloudId || "";
         if (!headCoach && state.activeTeamTab === "setup") {
           state.activeTeamTab = "game";
         }
@@ -1655,31 +1747,19 @@
         els.cloudSignUpBtn.addEventListener("click", signUpToCloud);
         els.cloudSignOutBtn.addEventListener("click", signOutOfCloud);
         els.cloudRefreshBtn.addEventListener("click", loadCloudTeams);
-        els.joinTeamBtn.addEventListener("click", joinCloudTeam);
+        els.pendingInvitesList.addEventListener("click", (event) => {
+          const button = event.target.closest("button[data-action='accept-invite']");
+          if (!button) return;
+          acceptTeamInvite(button.dataset.inviteId);
+        });
         els.showInviteCardBtn.addEventListener("click", () => {
           els.gameDayInviteCard.classList.toggle("hidden");
         });
-        els.copyGameDayInviteCodeBtn.addEventListener("click", async () => {
-          const code = els.gameDayInviteCodeInput.value;
-          if (!code) return;
-          try {
-            await navigator.clipboard.writeText(code);
-            els.cloudStatus.textContent = "Invite code copied.";
-          } catch (error) {
-            els.gameDayInviteCodeInput.select();
-            els.cloudStatus.textContent = "Copy the selected invite code.";
-          }
+        els.sendGameDayInviteBtn.addEventListener("click", () => {
+          sendTeamInvite(els.gameDayInviteEmailInput);
         });
-        els.copyInviteCodeBtn.addEventListener("click", async () => {
-          const code = els.inviteCodeInput.value;
-          if (!code) return;
-          try {
-            await navigator.clipboard.writeText(code);
-            els.cloudStatus.textContent = "Invite code copied.";
-          } catch (error) {
-            els.inviteCodeInput.select();
-            els.cloudStatus.textContent = "Copy the selected invite code.";
-          }
+        els.sendSetupInviteBtn.addEventListener("click", () => {
+          sendTeamInvite(els.setupInviteEmailInput);
         });
 
         els.gameDayTabBtn.addEventListener("click", () => {
