@@ -25,7 +25,7 @@
           <p class="mt-1 text-sm text-slate-600">Cloud roster setup plus a deterministic lineup planner for your coaching staff.</p>
         </div>
         <div class="w-full space-y-2 sm:w-auto sm:min-w-80">
-          <div id="headerSignedOutControls" class="grid gap-2">
+          <div id="headerSignedOutControls" class="hidden">
             <input id="headerEmailInput" class="min-h-10 rounded-md border border-slate-300 px-3 text-sm" type="email" placeholder="coach@email.com" />
             <input id="headerPasswordInput" class="min-h-10 rounded-md border border-slate-300 px-3 text-sm" type="password" placeholder="Password" />
             <div class="grid grid-cols-2 gap-2">
@@ -48,10 +48,10 @@
 
       <section id="teamListView" class="space-y-4"></section>
 
-      <section id="cloudAccessView" class="space-y-3 rounded-md border border-slate-200 bg-white p-4 shadow-sm">
+      <section id="cloudAccessView" class="mx-auto w-full max-w-xl space-y-3 rounded-md border border-slate-200 bg-white p-4 shadow-sm">
         <div>
-          <h2 class="text-2xl font-bold">Coach Login</h2>
-          <p class="text-sm text-slate-600">Sign in or create an account to view cloud teams, build lineups, or join as an assistant coach.</p>
+          <h2 id="cloudAccessTitle" class="text-2xl font-bold">Coach Login</h2>
+          <p id="cloudAccessSubtitle" class="text-sm text-slate-600">Sign in or create an account to view cloud teams, build lineups, or join as an assistant coach.</p>
         </div>
         <div id="cloudSignedOutControls" class="grid gap-2 sm:grid-cols-[1fr_1fr_auto_auto]">
           <input id="cloudEmailInput" class="min-h-11 rounded-md border border-slate-300 px-3 text-base" type="email" placeholder="coach@email.com" />
@@ -387,6 +387,8 @@
         headerSignUpBtn: document.querySelector("#headerSignUpBtn"),
         headerSignedInLabel: document.querySelector("#headerSignedInLabel"),
         headerSignOutBtn: document.querySelector("#headerSignOutBtn"),
+        cloudAccessTitle: document.querySelector("#cloudAccessTitle"),
+        cloudAccessSubtitle: document.querySelector("#cloudAccessSubtitle"),
         cloudAccessView: document.querySelector("#cloudAccessView"),
         cloudSignedOutControls: document.querySelector("#cloudSignedOutControls"),
         cloudSignedInControls: document.querySelector("#cloudSignedInControls"),
@@ -488,11 +490,15 @@
         }
 
         const signedIn = Boolean(state.user);
-        els.headerSignedOutControls.classList.toggle("hidden", signedIn);
+        els.headerSignedOutControls.classList.add("hidden");
         els.headerSignedInControls.classList.toggle("hidden", !signedIn);
         els.cloudSignedOutControls.classList.toggle("hidden", signedIn);
         els.cloudSignedInControls.classList.toggle("hidden", !signedIn);
         els.headerSignedInLabel.textContent = signedIn ? `Signed in as ${state.user.email}` : "";
+        els.cloudAccessTitle.textContent = signedIn ? "Coach Access" : "Coach Login";
+        els.cloudAccessSubtitle.textContent = signedIn
+          ? "Create a cloud team, refresh your teams, or join another team as an assistant."
+          : "Sign in or create an account to view cloud teams, build lineups, or join as an assistant coach.";
         els.cloudStatus.textContent = signedIn
           ? `Signed in as ${state.user.email}. User id: ${state.user.id}. Cloud teams loaded: ${state.memberships.length}.`
           : "Cloud not signed in.";
