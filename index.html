@@ -796,6 +796,44 @@
         }
       }
 
+      async function deleteSelectedTeam() {
+        const team = getSelectedTeam();
+        if (!team) return;
+
+        if (!isHeadCoach(team)) {
+          els.cloudStatus.textContent = "Only the head coach can delete a team.";
+          return;
+        }
+
+        const name = team.name || "this team";
+        const confirmed = confirm(
+          `Delete ${name}?\n\nThis permanently removes the team, roster, lineup, touch tracker, invitations, and assistant coach access for everyone. Assistant coaches will no longer see this team.\n\nThis cannot be undone.`
+        );
+        if (!confirmed) return;
+
+        const typedName = prompt(`Type DELETE to permanently delete ${name}.`);
+        if (typedName !== "DELETE") {
+          els.cloudStatus.textContent = "Team delete cancelled.";
+          return;
+        }
+
+        if (team.cloudId) {
+          const { error } = await cloud.from("teams").delete().eq("id", team.cloudId);
+          if (error) {
+            els.cloudStatus.textContent = error.message;
+            return;
+          }
+        }
+
+        state.teams = state.teams.filter((item) => item.id !== team.id && item.cloudId !== team.cloudId);
+        state.memberships = state.memberships.filter((membership) => membership.team_id !== team.cloudId);
+        state.selectedTeamId = state.teams[0]?.id || null;
+        state.activeTeamTab = "game";
+        saveState();
+        await loadCloudTeams();
+        els.cloudStatus.textContent = `${name} deleted. Assistant coaches no longer have access.`;
+      }
+
       function subscribeToSelectedCloudTeam() {
         if (!cloud) return;
         if (state.cloudChannel) {
@@ -1778,7 +1816,7 @@
         els.teamStorageBadge.className = team.cloudId
           ? "rounded-md bg-sky-100 px-3 py-2 text-sm font-bold text-sky-900"
           : "rounded-md bg-slate-100 px-3 py-2 text-sm font-bold text-slate-800";
-        els.deleteTeamBtn.classList.add("hidden");
+        els.deleteTeamBtn.classList.toggle("hidden", !headCoach);
         els.showInviteCardBtn.classList.toggle("hidden", !team.cloudId || !headCoach);
         els.gameDayInviteCard.classList.add("hidden");
         els.lineupPlannerSection.classList.toggle("hidden", !headCoach);
@@ -1891,17 +1929,7 @@
           render();
         });
 
-        els.deleteTeamBtn.addEventListener("click", () => {
-          const team = getSelectedTeam();
-          if (!team) return;
-          const name = team.name || "this team";
-          if (!confirm(`Delete ${name} and its roster?`)) return;
-
-          state.teams = state.teams.filter((item) => item.id !== team.id);
-          state.selectedTeamId = null;
-          saveState();
-          render();
-        });
+        els.deleteTeamBtn.addEventListener("click", deleteSelectedTeam);
 
         els.teamForm.addEventListener("submit", (event) => {
           event.preventDefault();

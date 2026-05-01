@@ -10,6 +10,7 @@ Single-file web app for youth flag football lineup planning, shared coach access
 - `supabase_role_lockdown.sql` - database guard for assistant coach permissions
 - `supabase_email_invites.sql` - email-based assistant coach invitations
 - `supabase_division_settings.sql` - per-team division and field-size settings
+- `supabase_delete_teams.sql` - head-coach team deletion policy
 
 ## Deploy
 
