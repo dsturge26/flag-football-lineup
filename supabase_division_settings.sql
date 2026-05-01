@@ -1,3 +1,6 @@
+alter table public.teams
+add column if not exists division_settings jsonb not null default '{}'::jsonb;
+
 create or replace function public.assistant_game_fields_unchanged()
 returns trigger
 language plpgsql
@@ -22,8 +25,3 @@ begin
   return new;
 end;
 $$;
-
-drop trigger if exists assistant_game_fields_guard on public.teams;
-create trigger assistant_game_fields_guard
-before update on public.teams
-for each row execute function public.assistant_game_fields_unchanged();

@@ -2,6 +2,7 @@ create table if not exists public.teams (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   division_id text not null,
+  division_settings jsonb not null default '{}'::jsonb,
   roster jsonb not null default '[]'::jsonb,
   touch_tracker jsonb not null default '{"counts":{},"history":[]}'::jsonb,
   attendance jsonb not null default '[]'::jsonb,
@@ -9,6 +10,9 @@ create table if not exists public.teams (
   created_by uuid not null default auth.uid() references auth.users(id) on delete cascade,
   updated_at timestamptz not null default now()
 );
+
+alter table public.teams
+add column if not exists division_settings jsonb not null default '{}'::jsonb;
 
 create table if not exists public.team_members (
   team_id uuid not null references public.teams(id) on delete cascade,
