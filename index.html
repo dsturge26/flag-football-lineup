@@ -276,18 +276,34 @@
             <div class="grid gap-4 lg:grid-cols-2">
               <fieldset class="rounded-md border border-slate-200 p-3">
                 <legend class="px-1 text-sm font-bold text-slate-700">Preferred offense positions</legend>
+                <div class="mt-2 flex gap-2">
+                  <button class="min-h-9 rounded-md border border-slate-300 px-3 text-sm font-semibold active:bg-slate-100" type="button" data-action="select-position-group" data-group="preferredOffense" data-checked="true">Select all</button>
+                  <button class="min-h-9 rounded-md border border-slate-300 px-3 text-sm font-semibold active:bg-slate-100" type="button" data-action="select-position-group" data-group="preferredOffense" data-checked="false">Clear</button>
+                </div>
                 <div id="preferredOffenseOptions" class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3"></div>
               </fieldset>
               <fieldset class="rounded-md border border-slate-200 p-3">
                 <legend class="px-1 text-sm font-bold text-slate-700">Cannot-play offense positions</legend>
+                <div class="mt-2 flex gap-2">
+                  <button class="min-h-9 rounded-md border border-slate-300 px-3 text-sm font-semibold active:bg-slate-100" type="button" data-action="select-position-group" data-group="cannotOffense" data-checked="true">Select all</button>
+                  <button class="min-h-9 rounded-md border border-slate-300 px-3 text-sm font-semibold active:bg-slate-100" type="button" data-action="select-position-group" data-group="cannotOffense" data-checked="false">Clear</button>
+                </div>
                 <div id="cannotOffenseOptions" class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3"></div>
               </fieldset>
               <fieldset class="rounded-md border border-slate-200 p-3">
                 <legend class="px-1 text-sm font-bold text-slate-700">Preferred defense positions</legend>
+                <div class="mt-2 flex gap-2">
+                  <button class="min-h-9 rounded-md border border-slate-300 px-3 text-sm font-semibold active:bg-slate-100" type="button" data-action="select-position-group" data-group="preferredDefense" data-checked="true">Select all</button>
+                  <button class="min-h-9 rounded-md border border-slate-300 px-3 text-sm font-semibold active:bg-slate-100" type="button" data-action="select-position-group" data-group="preferredDefense" data-checked="false">Clear</button>
+                </div>
                 <div id="preferredDefenseOptions" class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3"></div>
               </fieldset>
               <fieldset class="rounded-md border border-slate-200 p-3">
                 <legend class="px-1 text-sm font-bold text-slate-700">Cannot-play defense positions</legend>
+                <div class="mt-2 flex gap-2">
+                  <button class="min-h-9 rounded-md border border-slate-300 px-3 text-sm font-semibold active:bg-slate-100" type="button" data-action="select-position-group" data-group="cannotDefense" data-checked="true">Select all</button>
+                  <button class="min-h-9 rounded-md border border-slate-300 px-3 text-sm font-semibold active:bg-slate-100" type="button" data-action="select-position-group" data-group="cannotDefense" data-checked="false">Clear</button>
+                </div>
                 <div id="cannotDefenseOptions" class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3"></div>
               </fieldset>
             </div>
@@ -1144,6 +1160,12 @@
 
       function getCheckedValues(name) {
         return [...document.querySelectorAll(`input[name="${name}"]:checked`)].map((input) => input.value);
+      }
+
+      function setPositionGroupChecked(groupName, checked) {
+        document.querySelectorAll(`input[name="${groupName}"]`).forEach((input) => {
+          input.checked = checked;
+        });
       }
 
       function getAttendingPlayerIds() {
@@ -2043,6 +2065,12 @@
 
         els.clearPlayerFormBtn.addEventListener("click", resetPlayerForm);
         els.cancelEditPlayerBtn.addEventListener("click", resetPlayerForm);
+
+        els.playerForm.addEventListener("click", (event) => {
+          const button = event.target.closest("button[data-action='select-position-group']");
+          if (!button) return;
+          setPositionGroupChecked(button.dataset.group, button.dataset.checked === "true");
+        });
 
         els.playerForm.addEventListener("submit", (event) => {
           event.preventDefault();
