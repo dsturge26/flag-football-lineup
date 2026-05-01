@@ -999,15 +999,26 @@
       }
 
       function positionColorClasses(position, division) {
-        return (
+        const colors =
           division.positionColors?.[position] || {
-            bg: "bg-slate-50",
-            border: "border-slate-200",
-            text: "text-slate-950",
-            badge: "bg-slate-700",
+            bg: division.playersOnField === 5 ? "bg-yellow-100" : "bg-slate-50",
+            border: division.playersOnField === 5 ? "border-yellow-300" : "border-slate-200",
+            text: division.playersOnField === 5 ? "text-yellow-950" : "text-slate-950",
+            badge: division.playersOnField === 5 ? "bg-yellow-500" : "bg-slate-700",
             badgeText: "text-white"
-          }
-        );
+          };
+
+        if (division.playersOnField === 5 && colors.bg.includes("slate")) {
+          return {
+            bg: "bg-yellow-100",
+            border: "border-yellow-300",
+            text: "text-yellow-950",
+            badge: "bg-yellow-500",
+            badgeText: "text-white"
+          };
+        }
+
+        return colors;
       }
 
       function emptyManualLineup() {
